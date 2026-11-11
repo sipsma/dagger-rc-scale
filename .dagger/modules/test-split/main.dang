@@ -107,6 +107,7 @@ type TestSplit {
         "^TestLocalCache$",
         "^TestModule$",
         "^TestModuleConfig$",
+        "^TestModuleDefinitionSuite$",
         "^TestModuleLoading$",
         "^TestPHP$",
         "^TestProvision$",
@@ -140,6 +141,7 @@ type TestSplit {
         "^TestListen$",
         "^TestLocalDir$",
         "^TestLockfile$",
+        "^TestRemoteCacheTransferSuite$",
         "^TestRuntimeCodegen$",
         "^TestSecretProvider$",
         "^TestSequential$",
@@ -178,6 +180,7 @@ type TestSplit {
         "^TestListen$",
         "^TestLocalDir$",
         "^TestLockfile$",
+        "^TestRemoteCacheTransferSuite$",
         "^TestRuntimeCodegen$",
         "^TestSecretProvider$",
         "^TestSequential$",
@@ -185,8 +188,7 @@ type TestSplit {
       ],
       race: true,
       parallel: 16,
-      # TestCache checks the entries the engine image ships, and the generated
-      # client tests load Go modules in fresh nested engines made from this one.
+      # The remote cache transfer suite checks the engine image's entries.
       imageEntries: true,
     )
   }
@@ -214,6 +216,7 @@ type TestSplit {
         "^TestLocalCache$",
         "^TestModule$",
         "^TestModuleConfig$",
+        "^TestModuleDefinitionSuite$",
         "^TestModuleLoading$",
         "^TestPHP$",
         "^TestProvision$",
@@ -377,6 +380,16 @@ type TestSplit {
   """
   pub testModules: Void @check {
     testSpecific(["^TestModule$", "^TestModuleConfig$", "^TestModuleLoading$"])
+  }
+
+  """
+  Test module definition caching with the race detector.
+  This suite starts multiple engines and runs separately from the base shard.
+  """
+  pub testModuleDefinitions: Void @check {
+    # TestCachedAcrossClients loads Go modules in fresh nested engines made
+    # from this one.
+    testSpecific(["^TestModuleDefinitionSuite$"], race: true, imageEntries: true)
   }
 
   """
