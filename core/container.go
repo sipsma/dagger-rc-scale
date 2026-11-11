@@ -8148,3 +8148,5 @@ func (*TerminalLegacy) Evaluate(ctx context.Context) error {
 func (terminal *TerminalLegacy) Sync(ctx context.Context) error {
 	return terminal.Evaluate(ctx)
 }
+
+// An edit for the dev stack's after-edit runs: it changes the engine's source and nothing else.
