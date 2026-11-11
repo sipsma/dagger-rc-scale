@@ -107,7 +107,6 @@ type TestSplit {
         "^TestLocalCache$",
         "^TestModule$",
         "^TestModuleConfig$",
-        "^TestModuleDefinitionSuite$",
         "^TestModuleLoading$",
         "^TestPHP$",
         "^TestProvision$",
@@ -141,7 +140,6 @@ type TestSplit {
         "^TestListen$",
         "^TestLocalDir$",
         "^TestLockfile$",
-        "^TestRemoteCacheTransferSuite$",
         "^TestRuntimeCodegen$",
         "^TestSecretProvider$",
         "^TestSequential$",
@@ -180,7 +178,6 @@ type TestSplit {
         "^TestListen$",
         "^TestLocalDir$",
         "^TestLockfile$",
-        "^TestRemoteCacheTransferSuite$",
         "^TestRuntimeCodegen$",
         "^TestSecretProvider$",
         "^TestSequential$",
@@ -188,22 +185,10 @@ type TestSplit {
       ],
       race: true,
       parallel: 16,
-      # The remote cache transfer suite checks the engine image's entries.
+      # TestCache checks the entries the engine image ships, and the generated
+      # client tests load Go modules in fresh nested engines made from this one.
       imageEntries: true,
     )
-  }
-
-  """
-  Package patterns covered by the package-test shard
-  """
-  pub packagePatterns: String! {
-    # Match the source tree used by engine-dev tests: workspace-only tools
-    # excluded from that tree must not become explicit package arguments.
-    go(ws: self.ws, source: engineDev(ws: self.ws).source, race: true, cgo: true).env.withExec([
-      "go", "list", "-race", "-f",
-      "{{if ne .ImportPath \"github.com/dagger/dagger/core/integration\"}}{{.ImportPath}}{{end}}",
-      "./...",
-    ]).stdout
   }
 
   """
@@ -229,7 +214,6 @@ type TestSplit {
         "^TestLocalCache$",
         "^TestModule$",
         "^TestModuleConfig$",
-        "^TestModuleDefinitionSuite$",
         "^TestModuleLoading$",
         "^TestPHP$",
         "^TestProvision$",
@@ -245,7 +229,8 @@ type TestSplit {
         "^TestWorkspaceModules$",
         "^TestWorkspaceSelection$",
       ],
-      pkg: self.packagePatterns,
+      # Every package of the engine's source with tests but core/integration
+      pkg: "./... !./core/integration",
       race: true,
       parallel: 4,
     )
@@ -258,7 +243,7 @@ type TestSplit {
   tests run on it
   """
   pub testFastbolt: Void @check {
-    go(ws: self.ws, source: engineDev(ws: self.ws).source, race: true, cgo: true).env
+    engineDev(ws: self.ws).goEnv(cgo: true)
       .withDirectory("hack/fastbolt-difftest", self.ws.directory("hack/fastbolt-difftest"))
       .withMountedTemp("/small", size: 1048576)
       .withEnvVariable("FASTBOLT_SMALL_FS", "/small")
@@ -392,16 +377,6 @@ type TestSplit {
   """
   pub testModules: Void @check {
     testSpecific(["^TestModule$", "^TestModuleConfig$", "^TestModuleLoading$"])
-  }
-
-  """
-  Test module definition caching with the race detector.
-  This suite starts multiple engines and runs separately from the base shard.
-  """
-  pub testModuleDefinitions: Void @check {
-    # TestCachedAcrossClients loads Go modules in fresh nested engines made
-    # from this one.
-    testSpecific(["^TestModuleDefinitionSuite$"], race: true, imageEntries: true)
   }
 
   """
