@@ -208,7 +208,7 @@ func (dev *EngineDev) Container(
 // engine is the engine container builder builds, without the entries its
 // image ships.
 func (dev *EngineDev) engine(ctx context.Context, builder *build.Builder, platform dagger.Platform, version string) (*dagger.Container, error) {
-	cfg, err := generateConfig(dev.LogLevel)
+	cfg, err := generateConfig(dev.LogLevel, dockerHubMirrors)
 	if err != nil {
 		return nil, err
 	}

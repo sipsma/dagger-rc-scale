@@ -129,7 +129,11 @@ func generateEntrypoint() (*dagger.File, error) {
 	return entrypoint, nil
 }
 
-func generateConfig(logLevel string) (*dagger.File, error) {
+// dockerHubMirrors are the mirrors an engine built here asks for Docker Hub
+// images, in order, before Docker Hub itself.
+var dockerHubMirrors = []string{"mirror.gcr.io"}
+
+func generateConfig(logLevel string, dockerMirrors []string) (*dagger.File, error) {
 	cfg := struct {
 		LogLevel   string `json:"logLevel,omitempty"`
 		Registries map[string]struct {
@@ -141,7 +145,7 @@ func generateConfig(logLevel string) (*dagger.File, error) {
 			Mirrors []string `json:"mirrors"`
 		}{
 			"docker.io": {
-				Mirrors: []string{"mirror.gcr.io"},
+				Mirrors: dockerMirrors,
 			},
 		},
 	}

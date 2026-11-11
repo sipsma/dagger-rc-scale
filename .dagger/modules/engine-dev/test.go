@@ -690,7 +690,7 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 		WithEngineConfig(`registry."registry:5000"`, `http = true`).
 		WithEngineConfig(`registry."privateregistry:5000"`, `http = true`).
 		WithEngineConfig(`registry."imagemirror:5000"`, `http = true`).
-		WithEngineConfig(`registry."docker.io"`, `mirrors = ["imagemirror:5000", "mirror.gcr.io"]`).
+		WithEngineConfig(`registry."docker.io"`, `mirrors = ["mirror.gcr.io"]`).
 		Container(
 			ctx,
 			"",    // platform
@@ -700,6 +700,14 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 	if err != nil {
 		return nil, err
 	}
+
+	// The test engine asks imageMirror for Docker Hub images first. Its
+	// engine.json sets Docker Hub's mirrors, over the TOML entry above.
+	testEngineConfig, err := generateConfig(dev.LogLevel, append([]string{"imagemirror:5000"}, dockerHubMirrors...))
+	if err != nil {
+		return nil, err
+	}
+	devEngine = devEngine.WithFile(engineJSONPath, testEngineConfig)
 
 	// TODO: mitigation for https://github.com/dagger/dagger/issues/8031
 	// during our test suite
