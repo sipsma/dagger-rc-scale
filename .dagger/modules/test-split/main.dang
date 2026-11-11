@@ -140,6 +140,7 @@ type TestSplit {
         "^TestListen$",
         "^TestLocalDir$",
         "^TestLockfile$",
+        "^TestRemoteCacheTransferSuite$",
         "^TestRuntimeCodegen$",
         "^TestSecretProvider$",
         "^TestSequential$",
