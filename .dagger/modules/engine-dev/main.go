@@ -11,13 +11,12 @@ import (
 	"github.com/dagger/dagger/engine/distconsts"
 	"github.com/dagger/dagger/util/parallel"
 	"golang.org/x/mod/semver"
+	"golang.org/x/sync/errgroup"
 
 	"dagger/engine-dev/build"
 	"dagger/engine-dev/consts"
 	"dagger/engine-dev/internal/dagger"
 	clidev "dagger/engine-dev/internal/dagger/clients/cli-dev"
-	"dagger/engine-dev/internal/dagger/clients/codegen"
-	gomod "dagger/engine-dev/internal/dagger/clients/go"
 	"dagger/engine-dev/internal/dagger/clients/wolfi"
 )
 
@@ -165,7 +164,7 @@ func (dev *EngineDev) Container(
 	// +optional
 	version string,
 ) (*dagger.Container, error) {
-	builder, err := build.NewBuilder(ctx, dev.Source, version, dev.VCSCommit, dev.VCSDirty, dev.Ws)
+	builder, err := build.NewBuilder(ctx, dev.Source, version, dev.VCSCommit, dev.VCSDirty)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +176,7 @@ func (dev *EngineDev) Container(
 	// stamps its CLI but not the engine, whose version is the source's: so
 	// every version's image of a platform gets its entries from one making,
 	// and a release's images reuse the entries its main images made.
-	native, err := build.NewBuilder(ctx, dev.Source, "", dev.VCSCommit, dev.VCSDirty, dev.Ws)
+	native, err := build.NewBuilder(ctx, dev.Source, "", dev.VCSCommit, dev.VCSDirty)
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +235,7 @@ func (dev *EngineDev) engine(ctx context.Context, builder *build.Builder, platfo
 		WithFile(engineEntrypointPath, entrypoint).
 		WithEntrypoint([]string{filepath.Base(engineEntrypointPath)})
 
-	cli := clidev.New(clidev.CliDevOpts{Source: dev.cliDevSource(), Version: version, VcsCommit: dev.VCSCommit, VcsDirty: dev.VCSDirty, Ws: dev.Ws}).Binary(clidev.CliDevBinaryOpts{
+	cli := clidev.New(clidev.CliDevOpts{Version: version, VcsCommit: dev.VCSCommit, VcsDirty: dev.VCSDirty, Ws: dev.Ws}).Binary(clidev.CLIDevBinaryOpts{
 		Platform: platform,
 	})
 	ctr = ctr.
@@ -382,7 +381,7 @@ func entriesExported(ctx context.Context, ran *dagger.Container, exporter []stri
 // its size, least recently used first, and makes them again.
 // +check
 func (dev *EngineDev) ImageEntriesAfterPrune(ctx context.Context) error {
-	builder, err := build.NewBuilder(ctx, dev.Source, "", dev.VCSCommit, dev.VCSDirty, dev.Ws)
+	builder, err := build.NewBuilder(ctx, dev.Source, "", dev.VCSCommit, dev.VCSDirty)
 	if err != nil {
 		return err
 	}
@@ -494,7 +493,7 @@ func (dev *EngineDev) InstallClient(
 		WithServiceBinding("dagger-engine", service).
 		// FIXME: retrieve endpoint dynamically?
 		WithEnvVariable("_EXPERIMENTAL_DAGGER_RUNNER_HOST", endpoint).
-		WithMountedFile(cliPath, clidev.New(clidev.CliDevOpts{Source: dev.cliDevSource(), VcsCommit: dev.VCSCommit, VcsDirty: dev.VCSDirty, Ws: dev.Ws}).Binary()).
+		WithMountedFile(cliPath, dev.clientBinary()).
 		WithEnvVariable("_EXPERIMENTAL_DAGGER_CLI_BIN", cliPath).
 		WithSymlink(cliPath, "/usr/local/bin/dagger")
 	if cfg := dev.ClientDockerConfig; cfg != nil {
@@ -505,6 +504,11 @@ func (dev *EngineDev) InstallClient(
 		)
 	}
 	return client, nil
+}
+
+// The dagger CLI binary that InstallClient installs.
+func (dev *EngineDev) clientBinary() *dagger.File {
+	return clidev.New(clidev.CliDevOpts{Source: dev.cliDevSource(), VcsCommit: dev.VCSCommit, VcsDirty: dev.VCSDirty, Ws: dev.Ws}).Binary()
 }
 
 // withoutOuterSession wraps a command whose Dagger client must reach the dev
@@ -519,17 +523,21 @@ func withoutOuterSession(args ...string) []string {
 }
 
 // Introspect the engine API schema, and return it as a json-encoded file.
-// This file is used by SDKs to generate clients.
+// This file is used by SDKs to generate clients. It is the engine's answer to
+// an introspection query from a client of its own version, computed
+// in-process by the introspect tool, so no engine is built or started.
 func (dev *EngineDev) IntrospectionJSON(ctx context.Context) (*dagger.File, error) {
-	ctr, err := dev.InstallClient(ctx, nil, nil)
+	ctr, err := dev.introspectContainer(ctx)
 	if err != nil {
 		return nil, err
 	}
-	introspectionJSON := ctr.
-		WithFile("/usr/local/bin/codegen", codegen.New(dev.Ws).Binary()).
-		WithExec(withoutOuterSession("codegen", "introspect", "-o", "/schema.json")).
-		File("/schema.json")
-	return introspectionJSON, nil
+	schemaPath := "schema.json"
+	return ctr.
+		WithExec(
+			[]string{"introspect", "introspect"},
+			dagger.ContainerWithExecOpts{RedirectStdout: schemaPath},
+		).
+		File(schemaPath), nil
 }
 
 // Introspect the engine API schema, and return it as a graphql schema
@@ -538,25 +546,51 @@ func (dev *EngineDev) GraphqlSchema(
 	// +optional
 	version string,
 ) (*dagger.File, error) {
-	ctr, err := dev.InstallClient(ctx, nil, nil)
+	ctr, err := dev.introspectContainer(ctx)
 	if err != nil {
 		return nil, err
 	}
 	schemaPath := "schema.graphqls"
-	schema := ctr.
-		WithFile("/usr/local/bin/introspect", dev.IntrospectionTool()).
+	return ctr.
 		WithExec(
 			[]string{"introspect", "--version=" + version, "schema"},
 			dagger.ContainerWithExecOpts{RedirectStdout: schemaPath},
 		).
-		File(schemaPath)
-	return schema, nil
+		File(schemaPath), nil
+}
+
+// introspectContainer is a container with the introspect tool installed. The
+// tool and the container it runs in are built at the same time: neither needs
+// the other.
+func (dev *EngineDev) introspectContainer(ctx context.Context) (*dagger.Container, error) {
+	base := wolfi.New().Container()
+	var introspect *dagger.File
+	eg, egctx := errgroup.WithContext(ctx)
+	eg.Go(func() error {
+		var err error
+		if introspect, err = dev.IntrospectionTool(egctx); err != nil {
+			return err
+		}
+		_, err = introspect.Sync(egctx)
+		return err
+	})
+	eg.Go(func() error {
+		_, err := base.Sync(egctx)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+	return base.WithFile("/usr/local/bin/introspect", introspect), nil
 }
 
 // Build the `introspect` tool which introspects the engine API
-func (dev *EngineDev) IntrospectionTool() *dagger.File {
-	return gomod.New(gomod.GoOpts{Source: dev.Source, VcsCommit: dev.VCSCommit, VcsDirty: dev.VCSDirty, Ws: dev.Ws}).
-		Binary("./cmd/introspect")
+func (dev *EngineDev) IntrospectionTool(ctx context.Context) (*dagger.File, error) {
+	builder, err := build.NewBuilder(ctx, dev.Source, "", dev.VCSCommit, dev.VCSDirty)
+	if err != nil {
+		return nil, err
+	}
+	return builder.IntrospectBinary(), nil
 }
 
 var targets = []struct {
