@@ -689,7 +689,8 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 		WithEBPFProgs(ebpfProgs).
 		WithEngineConfig(`registry."registry:5000"`, `http = true`).
 		WithEngineConfig(`registry."privateregistry:5000"`, `http = true`).
-		WithEngineConfig(`registry."docker.io"`, `mirrors = ["mirror.gcr.io"]`).
+		WithEngineConfig(`registry."imagemirror:5000"`, `http = true`).
+		WithEngineConfig(`registry."docker.io"`, `mirrors = ["imagemirror:5000", "mirror.gcr.io"]`).
 		Container(
 			ctx,
 			"",    // platform
@@ -740,6 +741,7 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 	devEngineSvc := devEngine.
 		WithServiceBinding("registry", registrySvc).
 		WithServiceBinding("privateregistry", privateRegistry()).
+		WithServiceBinding("imagemirror", imageMirror()).
 		WithExposedPort(1234, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}).
 		WithExposedPort(6060, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}).
 		WithMountedCache(distconsts.EngineDefaultStateDir, core.NewCacheVolume("dagger-dev-engine-test-state"+rand.Text())).
@@ -784,6 +786,60 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 		return nil, err
 	}
 	return dev.InstallClient(ctx, tests, devEngineSvc)
+}
+
+// mirroredImages are the Docker Hub images the integration tests pull most,
+// each pinned to the index digest its tag had when the list was made. The
+// test engine finds them in imageMirror, beside it, instead of asking
+// mirror.gcr.io; an image or tag not listed here falls through to
+// mirror.gcr.io as before. Pinning a tag that moves upstream, such as
+// alpine:latest, serves the pinned image until the list is remade.
+var mirroredImages = []struct{ repo, tag, digest string }{
+	{"library/golang", "1.27-alpine", "sha256:eb61c3873c97416fff0116553fff65d67a3549f72e11d9758849a689cdd8b523"},
+	{"library/alpine", "3.22.1", "sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1"},
+	{"library/alpine", "3", "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf"},
+	{"library/alpine", "latest", "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf"},
+	{"library/alpine", "3.20", "sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc"},
+	{"library/alpine", "3.16.2", "sha256:65a2763f593ae85fab3b5406dc9e80f744ec5b449f269b699b5efd37a07ad32e"},
+	{"library/busybox", "1.37.0", "sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec"},
+	{"library/golang", "1.26-alpine", "sha256:30b1e546a9c7fa3b747c2bdba3a0c7bdf3a02ebb4c5b8405d2f948d7e8aac4ec"},
+	{"library/nginx", "alpine", "sha256:713fc2ebfd92e8217db451477182ee91944b123d2b1ee9fd5a8c6e91ca6c3a11"},
+	{"library/registry", "3", "sha256:38907510915c3f1604c7e83d6ab602ab3020d092f73bdaed8696773693ff768c"},
+	{"library/registry", "2", "sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373"},
+}
+
+const (
+	mirrorRegistryImage = "registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373"
+	regctlImage         = "ghcr.io/regclient/regctl:v0.11.1@sha256:a734f285c0962e46557bff24489fa0b0521455733f72d9eb30c4f7a5027aeed6"
+)
+
+// imageMirror is a registry holding mirroredImages, every platform of each.
+// Its storage is filled in one exec, by digest, so it is an ordinary cached
+// result: the exec runs the registry, copies each image into it from
+// mirror.gcr.io unchanged, and keeps what the registry stored.
+func imageMirror() *dagger.Service {
+	fill := []string{
+		"set -eu",
+		"registry serve /etc/docker/registry/config.yml >/tmp/registry.log 2>&1 &",
+		"pid=$!",
+		"for i in $(seq 100); do wget -q -O /dev/null http://127.0.0.1:5000/v2/ && break; sleep 0.1; done",
+		"regctl registry set --tls disabled 127.0.0.1:5000",
+	}
+	for _, img := range mirroredImages {
+		fill = append(fill, fmt.Sprintf("regctl image copy mirror.gcr.io/%s@%s 127.0.0.1:5000/%s:%s",
+			img.repo, img.digest, img.repo, img.tag))
+	}
+	fill = append(fill, `kill "$pid"`, `wait "$pid" || true`)
+	storage := core.NewContainer().
+		From(mirrorRegistryImage).
+		WithFile("/usr/local/bin/regctl", core.NewContainer().From(regctlImage).File("/regctl")).
+		WithExec([]string{"sh", "-c", strings.Join(fill, "\n")}).
+		Directory("/var/lib/registry")
+	return core.NewContainer().
+		From(mirrorRegistryImage).
+		WithDirectory("/var/lib/registry", storage).
+		WithExposedPort(5000, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}).
+		AsService(dagger.ContainerAsServiceOpts{UseEntrypoint: true})
 }
 
 func registry() *dagger.Service {
