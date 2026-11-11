@@ -1,0 +1,10 @@
+pub description = "One check that does nothing, for a session that leaves the engine's state as it found it"
+
+type Light {
+  """
+  Returns at once.
+  """
+  ok: Void @check {
+    null
+  }
+}

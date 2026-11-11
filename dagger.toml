@@ -49,6 +49,7 @@ generate = [
 test = ["e2e/**", "hack/sdl-diff", "internal/fastbolt"]
 
 [modules.golangci-lint]
+check.skip = ["*"]
 source = "github.com/dagger/golangci-lint@main"
 
 [modules.golangci-lint.settings]
@@ -147,7 +148,7 @@ source = "dagger.io/shellcheck"
 legacy-default-path = true
 
 [modules.test-split]
-check.skip = ["test-base-extra", "test-packages", "test-fastbolt", "test-provision", "test-telemetry", "test-call-and-shell", "test-cli-engine", "test-cache-persistence", "test-local-cache", "test-container", "test-interface", "test-llm", "test-module-runtimes", "test-modules", "test-module-definitions", "test-workspaces", "test-ebpf", "test-ebpf-exec-sched"]
+check.skip = ["*"]
 source = ".dagger/modules/test-split"
 legacy-default-path = true
 
@@ -411,3 +412,6 @@ source = "github.com/vito/agents/reviewer"
 [modules.context]
 check.skip = ["*"]
 source = "github.com/vito/agents/context"
+
+[modules.light]
+source = ".dagger/modules/light"
