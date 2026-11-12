@@ -1157,14 +1157,20 @@ func (activity *Activity) Add(span *Span) bool {
 	// optimization: if the new interval is wholly subsumed by an existing
 	// interval we can skip adding it. this is also handled by mergeIntervals,
 	// but it's harder to return false after the fact.
-	for _, existing := range activity.CompletedIntervals {
+	//
+	// The intervals are sorted and merged, so only the last one starting
+	// before ival can hold it: any earlier one ends before that one starts.
+	if idx > 0 {
+		existing := activity.CompletedIntervals[idx-1]
 		if ival.Start.After(existing.Start) && ival.End.Before(existing.End) {
 			return changed
 		}
 	}
 
 	activity.CompletedIntervals = slices.Insert(activity.CompletedIntervals, idx, ival)
-	activity.mergeIntervals()
+	// Everything before the interval preceding ival was merged already and
+	// doesn't overlap ival, so merging can start there.
+	activity.mergeIntervalsFrom(max(idx-1, 0))
 	changed = true
 	return changed
 }
@@ -1183,16 +1189,18 @@ func (activity *Activity) EndTimeOrFallback(now time.Time) time.Time {
 	return activity.CompletedIntervals[len(activity.CompletedIntervals)-1].End
 }
 
-// mergeIntervals merges overlapping intervals in the activity.
-func (activity *Activity) mergeIntervals() {
+// mergeIntervalsFrom merges overlapping intervals in the activity, given that
+// the intervals before index from are already merged: none overlaps the next
+// one. A merge from 0 would only copy them over themselves.
+func (activity *Activity) mergeIntervalsFrom(from int) {
 	// If there are no intervals, there's nothing to merge.
 	if len(activity.CompletedIntervals) == 0 {
 		return
 	}
 
 	// Keep track of the index of the last merged interval.
-	lastIndex := 0
-	for i := 1; i < len(activity.CompletedIntervals); i++ {
+	lastIndex := from
+	for i := from + 1; i < len(activity.CompletedIntervals); i++ {
 		ival := activity.CompletedIntervals[i]
 		// If the current interval overlaps with the last one, merge them.
 		if ival.Start.Before(activity.CompletedIntervals[lastIndex].End) {
@@ -1693,6 +1701,28 @@ func (db *DB) call(dig string, seen map[string]bool) *callpbv1.Call {
 // the caller must degrade (a read-only roster entry, a refused restore)
 // rather than act on a truncated chain.
 func (db *DB) CallIDForDigest(digest string) (*call.ID, error) {
+	recipe, err := db.CallRecipe(digest)
+	if err != nil {
+		return nil, err
+	}
+	dag := &callpbv1.DAG{
+		Value: &callpbv1.DAG_Recipe{
+			Recipe: recipe,
+		},
+	}
+
+	var id call.ID
+	if err := id.FromProto(dag); err != nil {
+		return nil, err
+	}
+	return &id, nil
+}
+
+// CallRecipe gathers the complete recipe behind a call digest -- every frame
+// its ID closure references -- without decoding it into an ID, for callers
+// that inspect what a recipe would do before anyone evaluates it. It fails
+// like CallIDForDigest when a frame never reached this client.
+func (db *DB) CallRecipe(digest string) (*callpbv1.RecipeDAG, error) {
 	if digest == "" {
 		return nil, fmt.Errorf("no call digest")
 	}
@@ -1719,17 +1749,7 @@ func (db *DB) CallIDForDigest(digest string) (*call.ID, error) {
 		return nil, fmt.Errorf("cannot rebuild ID for %s: %s",
 			frameLabel(rootCall), missing[0])
 	}
-	dag := &callpbv1.DAG{
-		Value: &callpbv1.DAG_Recipe{
-			Recipe: recipe,
-		},
-	}
-
-	var id call.ID
-	if err := id.FromProto(dag); err != nil {
-		return nil, err
-	}
-	return &id, nil
+	return recipe, nil
 }
 
 func (db *DB) MustCall(dig string) *callpbv1.Call {

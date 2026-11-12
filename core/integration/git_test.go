@@ -2027,24 +2027,60 @@ func (GitSuite) TestShortSHAResolution(ctx context.Context, t *testctx.T) {
 	})
 
 	t.Run("remote repository", func(ctx context.Context, t *testctx.T) {
-		svc, url := gitService(ctx, t, c, core.NewQuery(c).Directory().WithNewFile("README.md", "Hello "+rand.Text()))
-		repo := core.NewQuery(c).Git(url, core.GitOpts{ExperimentalServiceHost: svc})
-
-		full, err := repo.Branch("main").CommitSHA(ctx)
+		// main: root - a - b; tag v1 and a pull request head reach commits
+		// no branch does; a deleted branch leaves one no ref reaches.
+		served := core.NewQuery(c).Container().
+			From(alpineImage).
+			WithExec([]string{"apk", "add", "git", "git-daemon"}).
+			With(gitUserConfig).
+			WithWorkdir("/work").
+			WithExec([]string{"sh", "-c", `set -e
+git init -q -b main
+echo ` + rand.Text() + ` > f && git add f && git commit -qm root
+echo a > f && git commit -qam a
+echo b > f && git commit -qam b
+git checkout -q --orphan tagged && echo t > f && git add f && git commit -qm tagged && git tag v1
+git checkout -q --orphan pull && echo p > f && git add f && git commit -qm pull
+git checkout -q --orphan gone && echo g > f && git add f && git commit -qm gone
+git checkout -q main
+for r in main~1 v1 pull gone; do git rev-parse "$r"; done > /shas
+git clone -q --bare . /srv/repo.git
+git -C /srv/repo.git update-ref refs/pull/1/head pull
+git -C /srv/repo.git branch -D tagged pull gone
+`})
+		shas, err := served.File("/shas").Contents(ctx)
+		require.NoError(t, err)
+		var mainCommit, tagged, pull, gone string
+		_, err = fmt.Sscan(shas, &mainCommit, &tagged, &pull, &gone)
 		require.NoError(t, err)
 
-		// nothing fetched yet: ls-remote only advertises refs, so the prefix
-		// cannot be expanded
-		_, err = repo.Ref(full[:7]).CommitSHA(ctx)
-		require.Error(t, err)
-		requireErrOut(t, err, "already-fetched")
+		svc := served.
+			WithExposedPort(9418).
+			WithDefaultArgs([]string{"git", "daemon", "--export-all", "--base-path=/srv"}).
+			AsService()
+		host, err := svc.Hostname(ctx)
+		require.NoError(t, err)
+		repo := core.NewQuery(c).Git("git://"+host+"/repo.git", core.GitOpts{ExperimentalServiceHost: svc})
 
-		// once the commit's objects are fetched, the same prefix resolves
-		_, err = repo.Branch("main").Tree().Sync(ctx)
+		// Nothing is fetched yet, and the commit is no ref's tip: the
+		// remote's branches are fetched to expand the prefix.
+		resolved, err := repo.Ref(mainCommit[:7]).CommitSHA(ctx)
 		require.NoError(t, err)
-		resolved, err := repo.Ref(full[:7]).CommitSHA(ctx)
+		require.Equal(t, mainCommit, resolved)
+
+		// tags are fetched along with branches
+		sha, err := repo.Commit(tagged[:8]).SHA(ctx)
 		require.NoError(t, err)
-		require.Equal(t, full, resolved)
+		require.Equal(t, tagged, sha)
+
+		// then every other ref the remote advertises
+		resolved, err = repo.Ref(pull[:7]).CommitSHA(ctx)
+		require.NoError(t, err)
+		require.Equal(t, pull, resolved)
+
+		// a commit no advertised ref reaches cannot be found by prefix
+		_, err = repo.Ref(gone[:10]).CommitSHA(ctx)
+		requireErrOut(t, err, "no commit matches short SHA")
 	})
 }
 
@@ -3383,15 +3419,16 @@ func (GitSuite) TestCaching(ctx context.Context, t *testctx.T) {
 	})
 }
 
-// A remote commit's tree without .git is made from its tree with .git, on one
-// checkout: a workspace and a module loaded from one commit used to check it
-// out twice. It must come out identical to a tree checked out without .git on
-// its own, which is the same checkout, normalized the same way, with .git
-// removed: every file, mode, symlink and time of the tree with .git but its
-// .git. (A container shows a mounted or copied tree's root with a time of its
-// own, so the root's time isn't compared here; the tree's is restored after
-// .git goes, as a checkout's is.)
-func (GitSuite) TestRemoteTreeWithoutGitDirSharesCheckout(ctx context.Context, t *testctx.T) {
+// A remote commit's tree without .git is made from its tree with .git, with
+// .git removed, so that a workspace and a module loaded from one commit share
+// one checkout (TestRemoteWorkspaceAndItsModuleShareCheckout). It must come
+// out identical to a tree checked out without .git on its own, which is the
+// same checkout, normalized the same way, with .git removed: every file,
+// mode, symlink and time of the tree with .git but its .git. (A container
+// shows a mounted or copied tree's root with a time of its own, so the root's
+// time isn't compared here; the tree's is restored after .git goes, as a
+// checkout's is.)
+func (GitSuite) TestRemoteTreeWithoutGitDirMatchesTreeWithGitDir(ctx context.Context, t *testctx.T) {
 	c := connect(ctx, t)
 
 	content := core.NewQuery(c).Directory().
@@ -3412,7 +3449,7 @@ func (GitSuite) TestRemoteTreeWithoutGitDirSharesCheckout(ctx context.Context, t
 	t.Cleanup(func() { _, _ = engineSvc.Stop(ctx) })
 	endpoint, err := engineSvc.Endpoint(ctx, core.ServiceEndpointOpts{Scheme: "tcp"})
 	require.NoError(t, err)
-	client, err := dagger.Connect(ctx, dagger.WithRunnerHost(endpoint), dagger.WithLogOutput(testutil.NewTWriter(t)))
+	client, err := dagger.Connect(ctx, dagger.WithRunnerHost(endpoint), dagger.WithLogOutput(testutil.ClientLogOutput(t)))
 	require.NoError(t, err)
 	t.Cleanup(func() { client.Close() })
 	q := core.NewQuery(client)
@@ -3426,26 +3463,6 @@ func (GitSuite) TestRemoteTreeWithoutGitDirSharesCheckout(ctx context.Context, t
 	require.NoError(t, err)
 	_, err = withGitDir.Sync(ctx)
 	require.NoError(t, err)
-
-	ents, err := q.Engine().LocalCache().EntrySet().Entries(ctx)
-	require.NoError(t, err)
-	var checkouts []string
-	for _, ent := range ents {
-		recordType, err := ent.RecordType(ctx)
-		require.NoError(t, err)
-		if recordType != "source.git.checkout" {
-			continue
-		}
-		desc, err := ent.Description(ctx)
-		require.NoError(t, err)
-		// The repository's mirror, which every checkout fetches from, is a
-		// checkout entry of its own.
-		if desc == "_remoteGitMirror" {
-			continue
-		}
-		checkouts = append(checkouts, desc)
-	}
-	require.Len(t, checkouts, 1, "one checkout serves both trees: %v", checkouts)
 
 	// Each path's type, mode, modification time, size and symlink target,
 	// and each file's contents, below the tree's root. The root itself is
@@ -3500,7 +3517,7 @@ func (GitSuite) TestRemoteWorkspaceAndItsModuleShareCheckout(ctx context.Context
 	endpoint, err := engineSvc.Endpoint(ctx, core.ServiceEndpointOpts{Scheme: "tcp"})
 	require.NoError(t, err)
 
-	plain, err := dagger.Connect(ctx, dagger.WithRunnerHost(endpoint), dagger.WithLogOutput(testutil.NewTWriter(t)))
+	plain, err := dagger.Connect(ctx, dagger.WithRunnerHost(endpoint), dagger.WithLogOutput(testutil.ClientLogOutput(t)))
 	require.NoError(t, err)
 	t.Cleanup(func() { plain.Close() })
 	sha, err := core.NewQuery(plain).Git(repoURL).Branch("main").CommitSHA(ctx)
