@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "files": {
+    "dagger.gen.go": "79affb639247d345d7eb88572ca3b6486e7cacd40147da81dc6d88640630e8aa",
+    "wolfi-lock.gen.go": "b7efec7a1c35a426966ffe7d03248828d1fa1e1a7400d2f35fb1a6ce3dfd5890"
+  }
+}
