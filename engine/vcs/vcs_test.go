@@ -169,6 +169,23 @@ func TestRepoRootForImportPath(t *testing.T) {
 				Root: "bitbucket.org/workspace/pkgname.git",
 			},
 		},
+		// Bitbucket's SSH host: the repository's web pages are on bitbucket.org
+		{
+			"ssh.bitbucket.org/workspace/pkgname/subdir",
+			&RepoRoot{
+				VCS:  vcsGit,
+				Repo: "https://bitbucket.org/workspace/pkgname",
+				Root: "ssh.bitbucket.org/workspace/pkgname",
+			},
+		},
+		{
+			"ssh.bitbucket.org/workspace/pkgname.git",
+			&RepoRoot{
+				VCS:  vcsGit,
+				Repo: "https://bitbucket.org/workspace/pkgname",
+				Root: "ssh.bitbucket.org/workspace/pkgname.git",
+			},
+		},
 		// GitLab public repo
 		{
 			"gitlab.com/testguigui1/dagger-public-sub/mywork/depth1/depth2",
