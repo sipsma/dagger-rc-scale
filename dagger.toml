@@ -5,14 +5,6 @@ source = ".dagger/modules/changie"
 source = ".dagger/modules/cli-dev"
 legacy-default-path = true
 
-[modules.dev]
-source = ".dagger/modules/dev"
-
-[modules.dev.settings]
-# Linux default. Override per-invocation with --docker=$DOCKER_HOST when the
-# active Docker context points somewhere else.
-docker = "unix:///var/run/docker.sock"
-
 [modules.docs]
 source = ".dagger/modules/docs-dev"
 legacy-default-path = true
@@ -159,26 +151,6 @@ lock = true
 # changes under dagql/tla.
 [env.dev.modules.tla-check]
 source = ".dagger/modules/tla-check"
-
-[modules.engine-lab]
-source = ".dagger/modules/engine-lab"
-
-[modules.engine-lab.settings]
-cloudCredentials = "file://~/.config/dagger/credentials.json"
-daggerConfig = "file://~/.config/dagger/config.toml"
-
-[modules.tui-qa]
-source = ".dagger/modules/tui-qa"
-
-[modules.tui-qa.settings]
-cloudCredentials = "file://~/.config/dagger/credentials.json"
-daggerConfig = "file://~/.config/dagger/config.toml"
-
-[modules.mcp-lab]
-source = ".dagger/modules/mcp-lab"
-
-[modules.mcp-lab.settings]
-cloudCredentials = "file://~/.config/dagger/credentials.json"
 
 [modules.editor]
 source = "github.com/vito/editor"
