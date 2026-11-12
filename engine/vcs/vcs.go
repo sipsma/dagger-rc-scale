@@ -594,6 +594,18 @@ var vcsPaths = []*vcsPath{
 			return nil
 		},
 	},
+	// Bitbucket: SSH ref. Bitbucket serves Git over SSH from ssh.bitbucket.org;
+	// its web pages stay on bitbucket.org.
+	{
+		prefix: "ssh.bitbucket.org/",
+		re:     `^(?P<root>ssh\.bitbucket\.org/(?P<bitname>[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+))(/[A-Za-z0-9_.\-]+)*(/.*)?$`,
+		repo:   "https://bitbucket.org/{bitname}",
+		vcs:    "git",
+		check: func(match map[string]string) error {
+			match["repo"] = strings.TrimSuffix(match["repo"], ".git")
+			return nil
+		},
+	},
 
 	// IBM DevOps Services (JazzHub)
 	{
