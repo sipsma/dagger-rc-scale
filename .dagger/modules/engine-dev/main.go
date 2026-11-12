@@ -751,7 +751,7 @@ func (dev *EngineDev) InstallClient(
 		// key of everything run in this container.
 		WithServiceBinding("dagger-engine", service).
 		WithEnvVariable("_EXPERIMENTAL_DAGGER_RUNNER_HOST", "tcp://dagger-engine:1234").
-		WithMountedFile(cliPath, clidev.New(clidev.CliDevOpts{Source: dev.cliDevSource(), Ws: dev.Ws}).Binary()).
+		WithMountedFile(cliPath, dev.clientBinary()).
 		WithEnvVariable("_EXPERIMENTAL_DAGGER_CLI_BIN", cliPath).
 		WithSymlink(cliPath, "/usr/local/bin/dagger")
 	if cfg := dev.ClientDockerConfig; cfg != nil {
@@ -762,6 +762,11 @@ func (dev *EngineDev) InstallClient(
 		)
 	}
 	return client, nil
+}
+
+// The dagger CLI binary that InstallClient installs.
+func (dev *EngineDev) clientBinary() *dagger.File {
+	return clidev.New(clidev.CliDevOpts{Source: dev.cliDevSource(), Ws: dev.Ws}).Binary()
 }
 
 // withoutOuterSession wraps a command whose Dagger client must reach the dev
