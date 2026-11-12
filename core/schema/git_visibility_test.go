@@ -137,3 +137,37 @@ func TestRemoteAdvertisementDoesNotInventSymbolicHEAD(t *testing.T) {
 	require.Empty(t, got.Symrefs)
 	require.Equal(t, []*gitutil.Ref{{Name: "HEAD", SHA: hash.String()}, {Name: "refs/heads/main", SHA: hash.String()}}, got.Refs)
 }
+
+func TestIsRemotePublicRedirects(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		targetPath string
+		contacted  int64
+	}{
+		// Azure Repos redirects a private repository's probe to a sign-in host.
+		// The probe must decide without contacting it.
+		{name: "away from refs", targetPath: "/_signin", contacted: 0},
+		// A moved repository redirects to its new refs, which must be followed.
+		{name: "to other refs", targetPath: "/new/repo.git/info/refs", contacted: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var targetRequests atomic.Int64
+			target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				targetRequests.Add(1)
+				w.WriteHeader(http.StatusUnauthorized)
+			}))
+			t.Cleanup(target.Close)
+			origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, target.URL+tc.targetPath+"?service=git-upload-pack", http.StatusFound)
+			}))
+			t.Cleanup(origin.Close)
+			remote, err := gitutil.ParseURL(origin.URL + "/org/private/_git/repo.git")
+			require.NoError(t, err)
+
+			public, err := IsRemotePublic(t.Context(), remote)
+			require.NoError(t, err)
+			require.False(t, public)
+			require.Equal(t, tc.contacted, targetRequests.Load())
+		})
+	}
+}
