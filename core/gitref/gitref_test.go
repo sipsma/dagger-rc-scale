@@ -270,6 +270,16 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			urlStr: "git@ssh.bitbucket.org:test-travail/test.git/depth1",
+			want: Parsed{
+				ModPath:        "ssh.bitbucket.org/test-travail/test.git/depth1",
+				RepoRoot:       &vcs.RepoRoot{Root: "ssh.bitbucket.org:test-travail/test.git", Repo: "https://bitbucket.org/test-travail/test"},
+				RepoRootSubdir: "depth1",
+				SourceUser:     "git",
+				Scheme:         SchemeSCPLike,
+			},
+		},
+		{
 			urlStr: "git@github.com:shykes/daggerverse/ci",
 			want: Parsed{
 				ModPath:        "github.com/shykes/daggerverse/ci",
