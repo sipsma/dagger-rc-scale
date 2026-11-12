@@ -9,8 +9,8 @@ type DaggerDev {
   It carries only basic shell tools (git, ripgrep). For example it is used as a base for the playground.
   """
   base: Container! {
-    wolfi.
-      container(packages: ["apk-tools", "git", "ripgrep"]).
+    wolfiLock.
+      container(set: "dagger-dev-base").
       withEnvVariable("HOME", "/root").
       withWorkdir("$HOME", expand: true)
   }
@@ -84,18 +84,7 @@ type DaggerDev {
     # evaluates the fields of a {{ }} record at once, and each field syncs
     # so its work runs there.
     let parts = {{
-      base: wolfi.container(packages: [
-        # FIXME: infer go version from our go.mod (ideally dagger.io/go has a utility for it)
-        "go-1.27",
-        "ca-certificates",
-        "git",
-        "build-base",
-        "protobuf~35",
-        "protobuf-dev~35",
-        "clang-22",
-        "lld",
-        "libbpf-dev",
-      ]).sync
+      base: wolfiLock.container(set: "dagger-dev-go").sync
       plugins: directory
         .withFile("protoc-gen-go", goTool("google.golang.org/protobuf", "v1.34.2", "cmd/protoc-gen-go"))
         .withFile("protoc-gen-gogo", goTool("github.com/gogo/protobuf", "v1.3.2", "protoc-gen-gogo"))

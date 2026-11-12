@@ -20,7 +20,7 @@ import (
 	"dagger/engine-dev/internal/dagger"
 	clidev "dagger/engine-dev/internal/dagger/clients/cli-dev"
 	golang "dagger/engine-dev/internal/dagger/clients/go"
-	"dagger/engine-dev/internal/dagger/clients/wolfi"
+	wolfilock "dagger/engine-dev/internal/dagger/clients/wolfi-lock"
 
 	"dagger.io/dagger/core"
 	"github.com/dagger/dagger/engine/distconsts"
@@ -901,21 +901,9 @@ func (dev *EngineDev) GoEnv(
 	if source == nil {
 		source = dev.Source
 	}
-	base := wolfi.New().
-		Container(wolfi.WolfiContainerOpts{Packages: []string{
-			"go-" + consts.GolangVersion,
-			"ca-certificates",
-			// a C toolchain, for cgo and the race detector
-			"build-base",
-			"git",
-			// protoc, at the version dagger/dagger's own protobuf code needs
-			"protobuf~35",
-			"protobuf-dev~35",
-			// the engine's tests exercise real client-managed agents and
-			// encrypted key loading
-			"openssh-client",
-			"curl",
-		}}).
+	// The packages are the set named in the wolfi-lock module.
+	base := wolfilock.New().
+		Container("go-env-"+consts.GolangVersion).
 		WithEnvVariable("GOPATH", "/go").
 		WithEnvVariable("PATH", "${GOPATH}/bin:${PATH}", dagger.ContainerWithEnvVariableOpts{Expand: true})
 	cgoEnabled := "0"
