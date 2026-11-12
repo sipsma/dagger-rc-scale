@@ -18,7 +18,7 @@ import (
 	"dagger/engine-dev/consts"
 	"dagger/engine-dev/internal/dagger"
 	clidev "dagger/engine-dev/internal/dagger/clients/cli-dev"
-	"dagger/engine-dev/internal/dagger/clients/wolfi"
+	wolfilock "dagger/engine-dev/internal/dagger/clients/wolfi-lock"
 )
 
 func New(
@@ -353,7 +353,7 @@ func (dev *EngineDev) entriesExporter(ctx context.Context, builder *build.Builde
 			UseEntrypoint:            true,
 			InsecureRootCapabilities: true,
 		})
-	client, err := dev.InstallClient(ctx, wolfi.New().Container(), service)
+	client, err := dev.InstallClient(ctx, wolfilock.New().Container("busybox"), service)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -515,7 +515,7 @@ func (dev *EngineDev) InstallClient(
 ) (*dagger.Container, error) {
 	if client == nil {
 		// By default, start from a simple base container
-		client = wolfi.New().Container()
+		client = wolfilock.New().Container("busybox")
 	}
 	if service == nil {
 		var err error
@@ -609,7 +609,7 @@ func (dev *EngineDev) GraphqlSchema(
 // tool and the container it runs in are built at the same time: neither needs
 // the other.
 func (dev *EngineDev) introspectContainer(ctx context.Context) (*dagger.Container, error) {
-	base := wolfi.New().Container()
+	base := wolfilock.New().Container("busybox")
 	var introspect *dagger.File
 	eg, egctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
