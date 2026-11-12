@@ -3,6 +3,8 @@ package schema
 import (
 	"cmp"
 	"context"
+	"errors"
+	"net/http"
 	"slices"
 	"strings"
 
@@ -11,8 +13,27 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/protocol/packp/capability"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/client"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/utils/ioutil"
 )
+
+// errRedirectAwayFromRefs reports a redirect of a probe somewhere other than
+// a repository's refs, as Azure Repos redirects a private repository's
+// probe to its sign-in host.
+var errRedirectAwayFromRefs = errors.New("http redirect away from /info/refs")
+
+// publicRemoteHTTPClient stops at a redirect away from the refs before
+// contacting its target. go-git would follow it and only then reject the
+// target, so the probe's answer would depend on reaching an unrelated host.
+var publicRemoteHTTPClient = githttp.NewClient(&http.Client{
+	Transport: gitHTTPTransport,
+	CheckRedirect: func(req *http.Request, _ []*http.Request) error {
+		if !strings.HasSuffix(req.URL.Path, "/info/refs") {
+			return errRedirectAwayFromRefs
+		}
+		return nil
+	},
+})
 
 // Use the same transport as go-git's ListContext, but retain the advertisement
 // before AllReferences guesses symbolic HEAD on servers without that capability.
@@ -22,9 +43,12 @@ func publicRemoteAdvertisement(ctx context.Context, remote *gitutil.GitURL) (_ *
 	if err != nil {
 		return nil, err
 	}
-	transportClient, err := client.NewClient(endpoint)
-	if err != nil {
-		return nil, err
+	var transportClient transport.Transport = publicRemoteHTTPClient
+	if endpoint.Protocol != "http" && endpoint.Protocol != "https" {
+		transportClient, err = client.NewClient(endpoint)
+		if err != nil {
+			return nil, err
+		}
 	}
 	session, err := transportClient.NewUploadPackSession(endpoint, nil)
 	if err != nil {
