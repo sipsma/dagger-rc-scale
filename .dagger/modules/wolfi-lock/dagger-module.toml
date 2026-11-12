@@ -1,0 +1,10 @@
+name = "wolfi-lock"
+include = []
+
+[entrypoint]
+  kind = "dang"
+  source = "./internal/dagger/entrypoint"
+
+[[dependencies]]
+  name = "go"
+  source = "github.com/dagger/go@2f5cd3df43f4b8e884ce1c69f228c448b029148f"
