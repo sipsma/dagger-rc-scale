@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": {
+    "dagger.dispatch.gen.go": "c4415703eff52c1b37c05c0658b2b6d5031a16da7c3481cbf10b8cdb18470624",
+    "dagger.gen.go": "8be762a07b780157fbdf47c09805b39907b642df1fde6d57a3d841f95ccc787a",
+    "internal/dagger/dagger.gen.go": "52dfa34c27e7134d2165b7206234a7b4da3e4faa0120506728b59b34760cd6a9",
+    "internal/dagger/entrypoint/main.dang": "185787211abac715b21db1c618fa903630182ff633c2d65e85a39866de5fc7f2",
+    "internal/dagger/wolfi-lock.gen.go": "8e21544e24b1b3d6e67f5989fe6b793447cde46869398036d5fca8b4c32aef7c"
+  }
+}

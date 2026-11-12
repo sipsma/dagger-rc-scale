@@ -13,7 +13,7 @@ import (
 	"dagger/python-client-dev/internal/dagger"
 	"dagger/python-client-dev/internal/dagger/clients/dockerd"
 	enginedev "dagger/python-client-dev/internal/dagger/clients/engine-dev"
-	"dagger/python-client-dev/internal/dagger/clients/wolfi"
+	wolfilock "dagger/python-client-dev/internal/dagger/clients/wolfi-lock"
 )
 
 // A toolchain to develop the Dagger Python SDK
@@ -62,8 +62,8 @@ func New(
 	ws *dagger.Workspace,
 ) *PythonClientDev {
 	return &PythonClientDev{
-		BaseContainer: wolfi.New().
-			Container(wolfi.WolfiContainerOpts{Packages: []string{"libgcc"}}).
+		BaseContainer: wolfilock.New().
+			Container("python-client").
 			WithEnvVariable("PYTHONUNBUFFERED", "1").
 			WithEnvVariable(
 				"PATH",
