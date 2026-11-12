@@ -34,10 +34,12 @@ import (
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
+// gitHTTPTransport allows injection of a custom DNS resolver for go-git.
+var gitHTTPTransport = netconfhttp.NewInjectableTransport(http.DefaultTransport)
+
 func init() {
-	// allow injection of custom dns resolver for go-git
 	customClient := &http.Client{
-		Transport: netconfhttp.NewInjectableTransport(http.DefaultTransport),
+		Transport: gitHTTPTransport,
 	}
 	client.InstallProtocol("http", githttp.NewClient(customClient))
 	client.InstallProtocol("https", githttp.NewClient(customClient))
@@ -1508,14 +1510,10 @@ func probePublicRemote(ctx context.Context, remote *gitutil.GitURL) (*gitutil.Re
 		// Azure Repos may also redirect unauthenticated private repository
 		// probes to a sign-in endpoint instead of returning a Git transport
 		// auth error.
-		if strings.Contains(err.Error(), "http redirect:") && strings.Contains(err.Error(), "does not end with /info/refs") {
+		if errors.Is(err, errRedirectAwayFromRefs) {
 			return nil, nil
 		}
 		if errors.Is(err, transport.ErrAuthenticationRequired) {
-			return nil, nil
-		}
-		// AzureDevops handling
-		if strings.Contains(err.Error(), `target "/_signin" does not end`) {
 			return nil, nil
 		}
 
