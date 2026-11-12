@@ -24,6 +24,7 @@ import (
 
 	"dagger.io/dagger/core"
 	"github.com/dagger/dagger/engine/distconsts"
+	"golang.org/x/sync/errgroup"
 )
 
 // List all core engine tests
@@ -736,6 +737,16 @@ exit "$result"
 // With wcprof, the test engine records a wcprof wall-clock profile of all its
 // work from startup, readable at http://daggerengine:6060/debug/wcprof/dump.
 func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcprof bool) (*dagger.Container, error) {
+	// Build the CLI that InstallClient installs while the dev engine builds
+	// and starts, rather than after, when the tests first need it.
+	cliCtx, cancelCLI := context.WithCancel(ctx)
+	defer cancelCLI()
+	var cliBuild errgroup.Group
+	cliBuild.Go(func() error {
+		_, err := dev.clientBinary().Sync(cliCtx)
+		return err
+	})
+
 	devEngine, err := dev.
 		WithEBPFProgs(ebpfProgs).
 		WithEngineConfig(`registry."registry:5000"`, `http = true`).
@@ -835,6 +846,9 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 		WithMountedCache("/run", engineRunVol).
 		WithServiceBinding("registry", registrySvc)
 
+	if err := cliBuild.Wait(); err != nil {
+		return nil, err
+	}
 	return dev.InstallClient(ctx, tests, devEngineSvc)
 }
 
