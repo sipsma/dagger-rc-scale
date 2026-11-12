@@ -32,6 +32,7 @@ import (
 	"github.com/vito/dang/v2/pkg/ioctx"
 	"github.com/vito/dang/v2/pkg/querybuilder"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/singleflight"
 )
 
 type dangSourceRunner func(context.Context, string) (dang.ValueScope, error)
@@ -559,19 +560,30 @@ func moduleDeclaredTypeNames(ctx context.Context, modSrcDir, moduleName string) 
 		slog.Debug("ensureModuleSelfTypes: determine Dang version", "dir", modSrcDir, "error", err)
 		complete = false
 	}
-	var key string
-	if complete {
-		key = declaredTypeNamesKey(moduleName, version, files)
-		if names, ok := declaredTypeNames.Get(key); ok {
-			return names
-		}
+	if !complete {
+		return parseDeclaredTypeNames(ctx, modSrcDir, moduleName, files)
 	}
-	names := parseDeclaredTypeNames(ctx, modSrcDir, moduleName, files)
-	if complete {
+	key := declaredTypeNamesKey(moduleName, version, files)
+	if names, ok := declaredTypeNames.Get(key); ok {
+		return names
+	}
+	// The module's prebuild (PrebuildRuntime) parses the same source while
+	// its dependencies load; a load that needs the names before it is done
+	// waits for that parse rather than parsing the source a second time. The
+	// parse reads the files from the first caller's modSrcDir, so that caller
+	// returns only once it is done, even when its context is canceled, and
+	// its directory stays in place until then.
+	names, _, _ := declaredTypeNamesParses.Do(key, func() (any, error) {
+		names := parseDeclaredTypeNames(ctx, modSrcDir, moduleName, files)
 		declaredTypeNames.Add(key, names)
-	}
-	return names
+		return names, nil
+	})
+	return names.([]string)
 }
+
+// declaredTypeNamesParses lets concurrent moduleDeclaredTypeNames calls for
+// the same source share one parse.
+var declaredTypeNamesParses singleflight.Group
 
 // declaredTypeNamesKey identifies a module's declared type names by its name,
 // the Dang version its source is parsed as, and the names and content of its
@@ -1508,6 +1520,11 @@ func dangDeclaredType(val *dang.Object) (*dang.Type, bool) {
 func createInterfaceTypeDef(ctx context.Context, srv *dagql.Server, name string, mod *dang.Type, env dang.ValueScope, localTypes dangLocalTypes) (dagql.ObjectResult[*core.TypeDef], error) {
 	var res dagql.ObjectResult[*core.TypeDef]
 
+	// A module's imports are file-local: evaluate the methods' directive
+	// arguments in the scope of the file declaring the interface, so they
+	// can name its imports.
+	directiveScope := dang.DeclarationScope(env, name)
+
 	sels := []dagql.Selector{
 		{Field: "typeDef"},
 		{
@@ -1523,7 +1540,7 @@ func createInterfaceTypeDef(ctx context.Context, srv *dagql.Server, name string,
 		}
 		switch x := fieldType.(type) {
 		case *hm.FunctionType:
-			fnDef, err := createFunction(ctx, srv, mod, fieldName, x, env, localTypes)
+			fnDef, err := createFunction(ctx, srv, mod, fieldName, x, directiveScope, localTypes)
 			if err != nil {
 				return res, fmt.Errorf("failed to create method %s for interface %s: %w", fieldName, name, err)
 			}
