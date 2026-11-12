@@ -13,5 +13,5 @@ engineVersion = "v1.0.0-0"
   source = "github.com/dagger/go@b0476af0f42568416ff2b876807a1748e666626e"
 
 [[dependencies]]
-  name = "wolfi"
-  source = "github.com/dagger/wolfi@fdec349f9aad840f2853bc2e6534f2555788da04"
+  name = "wolfi-lock"
+  source = "../wolfi-lock"

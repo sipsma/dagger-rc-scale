@@ -294,9 +294,19 @@ targetVersion = "v1.0.0-beta.26"
 
 [sdks.go.scopes.".dagger/modules/engine-dev"]
 is-module = true
-clients = ["github.com/dagger/alpine@e746b9763b6f4d004954deb35f66e693edfd854a", "./.dagger/modules/cli-dev", "github.com/dagger/go@b0476af0f42568416ff2b876807a1748e666626e", "github.com/dagger/wolfi@fdec349f9aad840f2853bc2e6534f2555788da04", "./.dagger/modules/engine-dev/notify"]
+clients = ["github.com/dagger/alpine@e746b9763b6f4d004954deb35f66e693edfd854a", "./.dagger/modules/cli-dev", "github.com/dagger/go@b0476af0f42568416ff2b876807a1748e666626e", "./.dagger/modules/engine-dev/notify", "./.dagger/modules/wolfi-lock"]
 
 [sdks.go.scopes.".dagger/modules/engine-dev".settings]
+dangEntrypoint = true
+unifiedClients = true
+daggerGo = true
+targetVersion = "v1.0.0-beta.26"
+
+[sdks.go.scopes.".dagger/modules/wolfi-lock"]
+is-module = true
+clients = ["github.com/dagger/alpine@b573a22db520b65795e6c012decdf7df02a13d9a", "github.com/dagger/wolfi@fdec349f9aad840f2853bc2e6534f2555788da04"]
+
+[sdks.go.scopes.".dagger/modules/wolfi-lock".settings]
 dangEntrypoint = true
 unifiedClients = true
 daggerGo = true
@@ -323,7 +333,7 @@ targetVersion = "v1.0.0-beta.26"
 
 [sdks.go.scopes.".dagger/modules/python-client-dev"]
 is-module = true
-clients = ["./.dagger/modules/engine-dev", "./.dagger/modules/python-client-dev/dockerd", "github.com/dagger/pytest", "github.com/dagger/wolfi@fdec349f9aad840f2853bc2e6534f2555788da04"]
+clients = ["./.dagger/modules/engine-dev", "./.dagger/modules/python-client-dev/dockerd", "github.com/dagger/pytest", "./.dagger/modules/wolfi-lock"]
 
 [sdks.go.scopes.".dagger/modules/python-client-dev".settings]
 dangEntrypoint = true
