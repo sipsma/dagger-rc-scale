@@ -20,7 +20,7 @@ import (
 	"dagger/engine-dev/consts"
 	"dagger/engine-dev/internal/dagger"
 	golang "dagger/engine-dev/internal/dagger/clients/go"
-	"dagger/engine-dev/internal/dagger/clients/wolfi"
+	wolfilock "dagger/engine-dev/internal/dagger/clients/wolfi-lock"
 )
 
 var versionAnnotation = distconsts.OCIVersionAnnotation
@@ -138,39 +138,12 @@ func (build *Builder) Engine(ctx context.Context) (*dagger.Container, error) {
 		}
 	}
 
-	pkgs := []string{
-		"ca-certificates",
-		"mount", "umount", "posix-libc-utils", "coreutils",
-		// for the entrypoint to give the engine its own cgroup namespace
-		"util-linux-misc",
-		// for git
-		"git", "openssh-client",
-		// for SSHFS-backed volumes
-		"fuse3", "glib",
-		// for compression/decompression, containerd prefers igzip from the isa-l package as it's fastest
-		"isa-l", "pigz", "xz",
-		// for CNI (use nft variants for compatibility with kernels lacking legacy xtables)
-		"nftables", "iptables-legacy", "dnsmasq",
-		// for Kata Containers integration
-		"e2fsprogs",
-		// for Directory.search
-		"ripgrep",
-		// for dbs
-		"sqlite",
-	}
+	set := "engine"
 	if build.gpuSupport {
-		pkgs = append(pkgs,
-			"nvidia-driver", "nvidia-tools",
-			"nvidia-container-toolkit",
-			// Wolfi packages the OCI prestart hook separately from the toolkit.
-			"nvidia-container-toolkit-nvidia-container-runtime-hook",
-		)
+		set = "engine-gpu"
 	}
-	base := wolfi.New().
-		Container(wolfi.WolfiContainerOpts{
-			Packages: pkgs,
-			Arch:     build.platformSpec.Architecture,
-		})
+	base := wolfilock.New().
+		Container(set, wolfilock.WolfiLockContainerOpts{Arch: build.platformSpec.Architecture})
 
 	if build.gpuSupport {
 		// Check the hook at the path used by the executor, and load the CLI's
@@ -375,11 +348,8 @@ func (build *Builder) VCSValues() []string {
 // links the C library of the image it is built in, so it is built where it
 // runs: wolfi.
 func (build *Builder) withRace(opts golang.GoOpts) golang.GoOpts {
-	opts.Base = wolfi.New().
-		Container(wolfi.WolfiContainerOpts{
-			Packages: []string{"go-" + consts.GolangVersion, "build-base"},
-			Arch:     build.platformSpec.Architecture,
-		}).
+	opts.Base = wolfilock.New().
+		Container("go-race-"+consts.GolangVersion, wolfilock.WolfiLockContainerOpts{Arch: build.platformSpec.Architecture}).
 		WithEnvVariable("CGO_ENABLED", "1")
 	opts.BuildFlags = append(opts.BuildFlags, "-race")
 	return opts
@@ -482,18 +452,8 @@ func (build *Builder) sshfsBin() *dagger.File {
 		consts.SSHFSChecksum,
 	)
 
-	return wolfi.New().
-		Container(wolfi.WolfiContainerOpts{
-			Packages: []string{
-				"build-base",
-				"ca-certificates-bundle",
-				"coreutils",
-				"fuse3-dev",
-				"glib-dev",
-				"meson",
-			},
-			Arch: build.platformSpec.Architecture,
-		}).
+	return wolfilock.New().
+		Container("sshfs-build", wolfilock.WolfiLockContainerOpts{Arch: build.platformSpec.Architecture}).
 		WithMountedDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"meson", "setup", "build", "--buildtype=release"}).
@@ -582,10 +542,8 @@ func (build *Builder) verifyPlatform(ctx context.Context, bin *dagger.File) erro
 		return fmt.Errorf("failed to get name of binary: %w", err)
 	}
 	mntPath := filepath.Join("/mnt", name)
-	out, err := wolfi.New().
-		Container(wolfi.WolfiContainerOpts{
-			Packages: []string{"file"},
-		}).
+	out, err := wolfilock.New().
+		Container("file").
 		WithMountedFile(mntPath, bin).
 		WithExec([]string{"file", mntPath}).
 		Stdout(ctx)
