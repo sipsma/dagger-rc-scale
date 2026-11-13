@@ -788,19 +788,19 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 			Permissions: 0o755,
 		})
 
-	// The test engine starts on state of its own (withDiskTemp). Only the
-	// directory of its unix socket is shared, with the tests' container,
-	// which reaches the engine through it (nonNestedDevEngine in
-	// core/integration). Its volume is named by the source and the tests, so
-	// two different test runs on one engine don't meet in it, and a socket
-	// left there is replaced when the next engine listens.
+	// The test engine starts on state of its own (withDiskTemp). Its /run
+	// is shared with the tests' container, which reaches the engine through
+	// its unix socket there (nonNestedDevEngine in core/integration). That
+	// volume is named by the source and the tests, so two different test
+	// runs on one engine don't meet in it, and a socket left there is
+	// replaced when the next engine listens.
 	sourceDigest, err := dev.Source.Digest(ctx)
 	if err != nil {
 		return nil, err
 	}
-	sockVol := core.NewCacheVolume("dagger-dev-engine-test-sock-" + shortDigest(sourceDigest+"\x00"+run+"\x00"+strings.Join(ebpfProgs, ",")+"\x00"+strconv.FormatBool(wcprof)))
+	sockVol := core.NewCacheVolume("dagger-dev-engine-test-run-" + shortDigest(sourceDigest+"\x00"+run+"\x00"+strings.Join(ebpfProgs, ",")+"\x00"+strconv.FormatBool(wcprof)))
 	engineArgs := []string{
-		"--addr", "unix:///run/dagger-test-sock/dagger-engine.sock",
+		"--addr", "unix:///run/dagger-engine.sock",
 		"--addr", "tcp://0.0.0.0:1234",
 		"--network-name", "dagger-dev",
 		"--network-cidr", "10.88.0.0/16",
@@ -818,8 +818,7 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 		WithExposedPort(1234, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}).
 		WithExposedPort(6060, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}),
 		distconsts.EngineDefaultStateDir).
-		WithMountedTemp("/run").
-		WithMountedCache("/run/dagger-test-sock", sockVol).
+		WithMountedCache("/run", sockVol).
 		AsService(dagger.ContainerAsServiceOpts{
 			Args:                     engineArgs,
 			UseEntrypoint:            true,
