@@ -495,18 +495,6 @@ func (r *GoArchiveBuilds) ManifestTool() *Directory { // go (../../:0:0)
 	return new(Directory).WithGraphQLQuery(q)
 }
 
-// The shared dependency calls the archives made (sharedImports), each
-// call's result by its ID in this session: a cache that is to have those
-// calls whole, not only each package's build, takes these.
-func (r *GoArchiveBuilds) SharedDependencies(ctx context.Context) ([]string, error) { // go (../../:0:0)
-	q := r.query.Select("sharedDependencies")
-
-	var response []string
-
-	q = q.Bind(&response)
-	return response, q.Execute(ctx)
-}
-
 // gobuild's gohdr, the tool the builds' execs run, for every machine an
 // engine runs on.
 func (r *GoArchiveBuilds) Tool() *Directory { // go (../../:0:0)
@@ -1519,15 +1507,17 @@ func (r *GoPackage) Platforms() *GoPlatforms { // go (../../:0:0)
 // This package's test binary for the engine's platform, as go test -c builds
 // it. The package must have test files.
 //
-// It is planned with the test binaries of the other packages of the
-// collection it was taken from, as the collection's testBinary builds them,
+// Taken from a module's whole collection, it is planned alone, as go test -c
+// of this package plans it. Taken from a collection narrowed to the packages
+// wanted, such as with subset, it is planned with the test binaries of that
+// collection's other packages, as the collection's testBinary builds them,
 // and shares that plan, its setup and the compiles of their dependencies
 // with each of their own testBinary: it compiles only what it links, and is
-// ready when its own link is. Taken from a collection narrowed to the
-// packages wanted, it is planned with those alone. With -coverpkg, or
-// -gcflags, -asmflags or -gccgoflags without a package pattern, whose
-// packages are those on go test's command line, it is planned alone, so that
-// it stays go test -c's of this package alone.
+// ready when its own link is. With -coverpkg, or -gcflags, -asmflags or
+// -gccgoflags without a package pattern, whose packages are those on go
+// test's command line, or when that shared plan fails, as when another of
+// those packages can't load, it is planned alone, so that it stays go test
+// -c's of this package alone.
 //
 // Unlike go test -c, it does not run go vet on the package: vet is left to
 // the lint checks, such as golangci-lint's.
