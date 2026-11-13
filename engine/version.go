@@ -117,6 +117,7 @@ func cleanVersion(v string) string {
 	return v
 }
 
+// (rr1 edit: a comment only.)
 // Minimum-version gating compares *base* versions — prerelease and build
 // metadata stripped (see BaseVersion) — NOT strict semver precedence.
 //
