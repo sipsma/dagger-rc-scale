@@ -368,7 +368,7 @@ type EngineDevServiceOpts struct {
 }
 
 // Create a test engine service
-func (r *EngineDev) Service(name string, opts ...EngineDevServiceOpts) *Service {
+func (r *EngineDev) Service(opts ...EngineDevServiceOpts) *Service {
 	q := r.query.Select("service")
 	for i := len(opts) - 1; i >= 0; i-- {
 		// `gpuSupport` optional argument
@@ -384,7 +384,6 @@ func (r *EngineDev) Service(name string, opts ...EngineDevServiceOpts) *Service 
 			q = q.Arg("metrics", opts[i].Metrics)
 		}
 	}
-	q = q.Arg("name", name)
 
 	return new(Service).WithGraphQLQuery(q)
 }

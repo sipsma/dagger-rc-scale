@@ -397,13 +397,6 @@ func DaggerDispatch(ctx context.Context, parentJSON []byte, parentName string, f
 			if err != nil {
 				panic(fmt.Errorf("%s: %w", "failed to unmarshal parent object", err))
 			}
-			var name string
-			if inputArgs["name"] != nil {
-				err = json.Unmarshal([]byte(inputArgs["name"]), &name)
-				if err != nil {
-					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg name", err))
-				}
-			}
 			var gpuSupport bool
 			if inputArgs["gpuSupport"] != nil {
 				err = json.Unmarshal([]byte(inputArgs["gpuSupport"]), &gpuSupport)
@@ -425,7 +418,7 @@ func DaggerDispatch(ctx context.Context, parentJSON []byte, parentName string, f
 					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg metrics", err))
 				}
 			}
-			return (*EngineDev).Service(&parent, ctx, name, gpuSupport, sharedCache, metrics)
+			return (*EngineDev).Service(&parent, ctx, gpuSupport, sharedCache, metrics)
 		case "Test":
 			var parent EngineDev
 			err = json.Unmarshal(parentJSON, &parent)
