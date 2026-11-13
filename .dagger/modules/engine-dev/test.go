@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"path"
@@ -103,7 +104,7 @@ func (dev *EngineDev) Test(
 		}
 		dumpTimes[i] = duration
 	}
-	ctr, err := dev.testContainer(ctx, ebpfProgs, false)
+	ctr, err := dev.testContainer(ctx, ebpfProgs, false, fmt.Sprint("test", run, skip, pkg, race))
 	if err != nil {
 		return err
 	}
@@ -236,7 +237,7 @@ func (dev *EngineDev) TestProfile(
 	// +optional
 	ebpfProgs []string,
 ) (*TestProfileResult, error) {
-	ctr, err := dev.testContainer(ctx, ebpfProgs, true)
+	ctr, err := dev.testContainer(ctx, ebpfProgs, true, fmt.Sprint("profile", run, skip, pkg, race))
 	if err != nil {
 		return nil, err
 	}
@@ -338,7 +339,7 @@ func (dev *EngineDev) TestTelemetry(
 	// Goldens compare a warmed cache with the following CLI invocation.
 	// Keep warmup results available after its session closes.
 	dev = dev.WithEngineConfig("worker.oci", "gc = false")
-	ctr, err := dev.testContainer(ctx, ebpfProgs, false)
+	ctr, err := dev.testContainer(ctx, ebpfProgs, false, fmt.Sprint("telemetry", run, skip, race))
 	if err != nil {
 		return nil, err
 	}
@@ -735,7 +736,9 @@ exit "$result"
 // Build an ephemeral test environment ready to run core engine tests.
 // With wcprof, the test engine records a wcprof wall-clock profile of all its
 // work from startup, readable at http://daggerengine:6060/debug/wcprof/dump.
-func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcprof bool) (*dagger.Container, error) {
+// run names what the tests are, so that two different test runs on one engine
+// don't share the directory of the test engine's socket.
+func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcprof bool, run string) (*dagger.Container, error) {
 	// Build the CLI that InstallClient installs while the dev engine builds
 	// and starts, rather than after, when the tests first need it.
 	cliCtx, cancelCLI := context.WithCancel(ctx)
@@ -784,8 +787,22 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 			Permissions: 0o755,
 		})
 
+	// The test engine starts on fresh state each time, in temporary
+	// directories rather than cache volumes: a cache volume outlives the run,
+	// so it needs a name of its own for each run, and that name made every
+	// test exec's key new at every run. Only the directory of its unix socket
+	// is shared, with the tests' container, which reaches the engine through
+	// it (nonNestedDevEngine in core/integration). That volume is named by
+	// the source and the tests, so two different test runs on one engine
+	// don't meet in it, and a socket left there is replaced when the next
+	// engine listens.
+	sourceDigest, err := dev.Source.Digest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sockVol := core.NewCacheVolume("dagger-dev-engine-test-sock-" + digestString(sourceDigest+"\x00"+run+"\x00"+strings.Join(ebpfProgs, ",")+fmt.Sprint(wcprof)))
 	engineArgs := []string{
-		"--addr", "unix:///run/dagger-engine.sock",
+		"--addr", "unix:///run/dagger-test-sock/dagger-engine.sock",
 		"--addr", "tcp://0.0.0.0:1234",
 		"--network-name", "dagger-dev",
 		"--network-cidr", "10.88.0.0/16",
@@ -796,15 +813,15 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 		engineArgs = append(engineArgs, "--wcprof")
 	}
 
-	engineRunVol := core.NewCacheVolume("dagger-dev-engine-test-varrun" + rand.Text())
 	registrySvc := registry()
 	devEngineSvc := devEngine.
 		WithServiceBinding("registry", registrySvc).
 		WithServiceBinding("privateregistry", privateRegistry()).
 		WithExposedPort(1234, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}).
 		WithExposedPort(6060, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}).
-		WithMountedCache(distconsts.EngineDefaultStateDir, core.NewCacheVolume("dagger-dev-engine-test-state"+rand.Text())).
-		WithMountedCache("/run", engineRunVol).
+		WithMountedTemp(distconsts.EngineDefaultStateDir).
+		WithMountedTemp("/run").
+		WithMountedCache("/run/dagger-test-sock", sockVol).
 		AsService(dagger.ContainerAsServiceOpts{
 			Args:                     engineArgs,
 			UseEntrypoint:            true,
@@ -842,7 +859,7 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 		// DAGGER_SESSION_PORT, which withoutOuterSession unsets; tell them.
 		WithEnvVariable("_DAGGER_TESTS_IN_DAGGER", "1").
 		WithServiceBinding("daggerengine", devEngineSvc).
-		WithMountedCache("/run", engineRunVol).
+		WithMountedCache("/run", sockVol).
 		WithServiceBinding("registry", registrySvc)
 
 	if err := cliBuild.Wait(); err != nil {
@@ -933,4 +950,10 @@ func (dev *EngineDev) GoEnv(
 		WithEnvVariable("CGO_ENABLED", cgoEnabled).
 		WithMountedDirectory(testSourcePath, source).
 		WithWorkdir(testSourcePath)
+}
+
+// digestString is a short hex digest of s, for a cache volume's name.
+func digestString(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:8])
 }
