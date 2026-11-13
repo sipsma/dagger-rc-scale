@@ -598,7 +598,6 @@ func differentFiles(ctx context.Context, a, b *dagger.Directory) ([]string, erro
 // Create a test engine service
 func (dev *EngineDev) Service(
 	ctx context.Context,
-	name string,
 	// +optional
 	gpuSupport bool,
 	// +optional
@@ -663,7 +662,6 @@ func (dev *EngineDev) InstallClient(
 		var err error
 		service, err = dev.Service(
 			ctx,
-			"",    // name
 			false, // gpuSupport
 			false, // sharedCache
 			false, // metrics

@@ -25,9 +25,7 @@ type DaggerDev {
   Connect to it with `DAGGER_ENGINE=tcp://localhost:1234`
   """
   engine(ws: Workspace!): Service! @up {
-    engineDev(ws: ws).service(""
-      gpuSupport: gpuSupport
-    )
+    engineDev(ws: ws).service(gpuSupport: gpuSupport)
   }
 
   """
