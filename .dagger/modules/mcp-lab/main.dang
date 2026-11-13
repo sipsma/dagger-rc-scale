@@ -126,7 +126,7 @@ type McpLab {
     # start an isolated engine built from the same workspace as the CLI.
     let lean = wolfi.container(packages: ["git"])
     let base = if (engineAddress == "") {
-      let svc = engineDev(ws: source).service(name: "mcp-lab").start
+      let svc = engineDev(ws: source).service.start
       self.engineService = svc
       lean
         .withServiceBinding("dagger-engine", svc)

@@ -36,7 +36,7 @@ type GoClientDev {
       .withWorkdir(sourcePath)
     # "sdk" is an arbitrary name for state persistence
     let engine = engineDev(ws: self.ws)
-    engine.installClient(ctr, engine.service("sdk"))
+    engine.installClient(ctr, engine.service)
   }
 
   pub source: Directory! {
@@ -54,7 +54,7 @@ type GoClientDev {
     let engine = engineDev(ws: self.ws)
     # "sdk" is an arbitrary name for state persistence
     let client = engine
-      .installClient(service: engine.service("sdk"))
+      .installClient(service: engine.service)
       .withMountedDirectory("/app", workspaceDir)
     engine.testModule(
       container: client,
