@@ -56,36 +56,21 @@ func New(
 	// +optional
 	version string,
 
-	// Workspace whose git info stamps the CLI's VCS metadata and pins the
-	// default engine tag on commit builds. Auto-injected when cli-dev is
-	// called directly; a parent toolchain such as engine-dev passes its own.
-	// Only the commit and dirty state resolved from it reach the build, never
-	// the session-scoped Workspace, so the build's cache key isn't
-	// session-specific.
-	// +optional
-	ws *dagger.Workspace,
-
-	// Resolved VCS commit to stamp, forwarded by a parent toolchain. Takes
-	// precedence over ws.
+	// The VCS commit to stamp into the binary, which also pins the default
+	// engine tag of a build whose version isn't semver. Without it the binary
+	// is unstamped. A stamped binary changes with every commit, so only a
+	// published CLI carries one; a CLI a check or test builds is the same
+	// bytes at every commit of the same source.
 	// +optional
 	vcsCommit string,
 
-	// Resolved VCS dirty state to stamp, paired with vcsCommit.
+	// Whether the stamped commit's tree had uncommitted changes, paired with
+	// vcsCommit.
 	// +optional
 	vcsDirty bool,
 ) (*CliDev, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
-	}
-
-	if vcsCommit == "" && ws != nil {
-		git := ws.Git()
-		if commit, err := git.Head().CommitSHA(ctx); err == nil {
-			vcsCommit = commit
-			if clean, err := git.Uncommitted().IsEmpty(ctx); err == nil {
-				vcsDirty = !clean
-			}
-		}
 	}
 
 	// FIXME: this go builder config is duplicated with engine build
