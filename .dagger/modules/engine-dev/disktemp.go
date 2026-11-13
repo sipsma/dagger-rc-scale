@@ -1,12 +1,8 @@
 package main
 
 import (
-	"context"
-
 	"dagger/engine-dev/internal/dagger"
-
-	daggerio "dagger.io/dagger"
-	"github.com/dagger/querybuilder"
+	disktemp "dagger/engine-dev/internal/dagger/clients/disk-temp"
 )
 
 // withDiskTemp is ctr with an empty directory at path on the engine's disk,
@@ -15,15 +11,9 @@ import (
 // each engine starts on state of its own, and nothing named for the run keys
 // the containers that use the engine.
 //
-// The published SDK this module builds against has no field for disk yet,
-// so the call is selected by hand. This goes when the SDK has it.
-func withDiskTemp(ctx context.Context, ctr *dagger.Container, path string) (*dagger.Container, error) {
-	id, err := ctr.ID(ctx)
-	if err != nil {
-		return nil, err
-	}
-	q := querybuilder.Query().Client(daggerio.DefaultGraphQLClient()).
-		Select("node").Arg("id", id).InlineFragment("Container").
-		Select("withMountedTemp").Arg("path", path).Arg("disk", true)
-	return (&dagger.Container{}).WithGraphQLQuery(q), nil
+// This module's API view has no disk argument, so the mount is the
+// disk-temp module's, on a view that has it. This goes when a release of
+// the SDK has disk.
+func withDiskTemp(ctr *dagger.Container, path string) *dagger.Container {
+	return disktemp.New().Mount(ctr, path)
 }

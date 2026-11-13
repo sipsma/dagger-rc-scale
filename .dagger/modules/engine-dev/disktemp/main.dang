@@ -1,0 +1,15 @@
+"""
+A temporary directory on the engine's disk, for engine-dev's nested engines'
+state. engine-dev builds against a published SDK whose API has no disk
+argument to withMountedTemp; this module is on v1.0.0-beta.28's, which has
+it. It goes when a release of the SDK has disk.
+"""
+type DiskTemp {
+  """
+  ctr with an empty directory at path on the engine's disk, a new one for
+  each process that runs with it, removed when that process ends.
+  """
+  pub mount(ctr: Container!, path: String!): Container! {
+    ctr.withMountedTemp(path: path, disk: true)
+  }
+}
