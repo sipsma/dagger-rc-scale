@@ -199,7 +199,7 @@ type TuiQa {
     let srcDir = source.directory("/")
 
     # build the dagger CLI from source
-    let cli = cliDev(ws: source, source: srcDir).binary
+    let cli = cliDev(source: srcDir).binary
 
     # The client container the command under test runs in. Default: a lean
     # client run with experimentalPrivilegedNesting, so it talks to the
