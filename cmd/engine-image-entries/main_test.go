@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"go/parser"
 	"go/token"
 	"os"
@@ -11,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dagger/dagger/dagql"
 	"github.com/dagger/dagger/engine/distconsts"
 	"github.com/stretchr/testify/require"
 )
@@ -64,4 +67,19 @@ func TestGoSDKSharedImportsCoverGeneratedCode(t *testing.T) {
 		require.NoError(t, err)
 		require.Contains(t, distconsts.GoSDKSharedImports(), path, "generated code imports %s, which the Go SDK's shared imports leave out", path)
 	}
+}
+
+// An exported bundle of another version than an engine of this source merges,
+// older or newer, is an unreadableError, which makes the tool exit 3 so an
+// engine of the image's build makes the entries; one of its version passes.
+func TestSameBundleVersion(t *testing.T) {
+	for _, version := range []int{dagql.ValueBundleVersion - 1, dagql.ValueBundleVersion + 1} {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, dagql.BundleFile), []byte(fmt.Sprintf(`{"version":%d,"roots":[]}`, version)), 0o644))
+		var unreadable unreadableError
+		require.True(t, errors.As(sameBundleVersion(dir), &unreadable), "bundle version %d", version)
+	}
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, dagql.BundleFile), []byte(fmt.Sprintf(`{"version":%d,"roots":[]}`, dagql.ValueBundleVersion)), 0o644))
+	require.NoError(t, sameBundleVersion(dir))
 }
