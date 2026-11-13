@@ -43,7 +43,7 @@ func publicRemoteAdvertisement(ctx context.Context, remote *gitutil.GitURL) (_ *
 	if err != nil {
 		return nil, err
 	}
-	var transportClient transport.Transport = publicRemoteHTTPClient
+	var transportClient = publicRemoteHTTPClient
 	if endpoint.Protocol != "http" && endpoint.Protocol != "https" {
 		transportClient, err = client.NewClient(endpoint)
 		if err != nil {
