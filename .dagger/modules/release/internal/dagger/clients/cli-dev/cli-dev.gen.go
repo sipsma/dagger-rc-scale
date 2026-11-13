@@ -10,7 +10,7 @@ import (
 )
 
 // Develop the Dagger CLI
-type CLIDev struct { // cli-dev (../../main.go:119:6)
+type CLIDev struct { // cli-dev (../../main.go:104:6)
 	query *querybuilder.Selection
 	// refetchID is set when this object is built through a field marked
 	// @reevaluate: it fetches its ID on every use, so each use evaluates that
@@ -34,11 +34,11 @@ func (r *CLIDev) WithGraphQLQuery(q *querybuilder.Selection) *CLIDev {
 
 // CLIDevBinaryOpts contains options for CLIDev.Binary
 type CLIDevBinaryOpts struct {
-	Platform Platform // cli-dev (../../main.go:133:2)
+	Platform Platform // cli-dev (../../main.go:118:2)
 }
 
 // Build the dagger CLI binary for a single platform
-func (r *CLIDev) Binary(opts ...CLIDevBinaryOpts) *File { // cli-dev (../../main.go:131:1)
+func (r *CLIDev) Binary(opts ...CLIDevBinaryOpts) *File { // cli-dev (../../main.go:116:1)
 	q := r.query.Select("binary")
 	for i := len(opts) - 1; i >= 0; i-- {
 		// `platform` optional argument
@@ -52,12 +52,12 @@ func (r *CLIDev) Binary(opts ...CLIDevBinaryOpts) *File { // cli-dev (../../main
 
 // CLIDevDevBinariesOpts contains options for CLIDev.DevBinaries
 type CLIDevDevBinariesOpts struct {
-	Platform Platform // cli-dev (../../main.go:162:2)
+	Platform Platform // cli-dev (../../main.go:147:2)
 }
 
 // Build dev CLI binaries
 // TODO: remove this
-func (r *CLIDev) DevBinaries(opts ...CLIDevDevBinariesOpts) *Directory { // cli-dev (../../main.go:160:1)
+func (r *CLIDev) DevBinaries(opts ...CLIDevDevBinariesOpts) *Directory { // cli-dev (../../main.go:145:1)
 	q := r.query.Select("devBinaries")
 	for i := len(opts) - 1; i >= 0; i-- {
 		// `platform` optional argument
@@ -233,7 +233,7 @@ func (r *CLIDev) ReleaseDryRun() *Check { // cli-dev (../../publish.go:179:1)
 	return new(Check).WithGraphQLQuery(q)
 }
 
-func (r *CLIDev) Tag(ctx context.Context) (string, error) { // cli-dev (../../main.go:121:2)
+func (r *CLIDev) Tag(ctx context.Context) (string, error) { // cli-dev (../../main.go:106:2)
 	if r.tag != nil {
 		return *r.tag, nil
 	}
@@ -245,7 +245,7 @@ func (r *CLIDev) Tag(ctx context.Context) (string, error) { // cli-dev (../../ma
 	return response, q.Execute(ctx)
 }
 
-func (r *CLIDev) Version(ctx context.Context) (string, error) { // cli-dev (../../main.go:120:2)
+func (r *CLIDev) Version(ctx context.Context) (string, error) { // cli-dev (../../main.go:105:2)
 	if r.version != nil {
 		return *r.version, nil
 	}
@@ -284,23 +284,18 @@ type CliDevOpts struct {
 	//
 	Version string // cli-dev (../../main.go:57:2)
 	//
-	// Workspace whose git info stamps the CLI's VCS metadata and pins the
-	// default engine tag on commit builds. Auto-injected when cli-dev is
-	// called directly; a parent toolchain such as engine-dev passes its own.
-	// Only the commit and dirty state resolved from it reach the build, never
-	// the session-scoped Workspace, so the build's cache key isn't
-	// session-specific.
+	// The VCS commit to stamp into the binary, which also pins the default
+	// engine tag of a build whose version isn't semver. Without it the binary
+	// is unstamped. A stamped binary changes with every commit, so only a
+	// published CLI carries one; a CLI a check or test builds is the same
+	// bytes at every commit of the same source.
 	//
-	Ws *Workspace // cli-dev (../../main.go:66:2)
+	VcsCommit string // cli-dev (../../main.go:65:2)
 	//
-	// Resolved VCS commit to stamp, forwarded by a parent toolchain. Takes
-	// precedence over ws.
+	// Whether the stamped commit's tree had uncommitted changes, paired with
+	// vcsCommit.
 	//
-	VcsCommit string // cli-dev (../../main.go:71:2)
-	//
-	// Resolved VCS dirty state to stamp, paired with vcsCommit.
-	//
-	VcsDirty bool // cli-dev (../../main.go:75:2)
+	VcsDirty bool // cli-dev (../../main.go:70:2)
 }
 
 // Develop the Dagger CLI
@@ -322,10 +317,6 @@ func (r *Query) CliDev(opts ...CliDevOpts) *CLIDev { // cli-dev (../../main.go:1
 		// `version` optional argument
 		if !querybuilder.IsZeroValue(opts[i].Version) {
 			q = q.Arg("version", opts[i].Version)
-		}
-		// `ws` optional argument
-		if !querybuilder.IsZeroValue(opts[i].Ws) {
-			q = q.Arg("ws", opts[i].Ws)
 		}
 		// `vcsCommit` optional argument
 		if !querybuilder.IsZeroValue(opts[i].VcsCommit) {

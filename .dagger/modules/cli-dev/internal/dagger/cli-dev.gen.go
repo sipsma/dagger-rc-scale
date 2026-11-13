@@ -273,17 +273,14 @@ type CliDevOpts struct {
 	// matches, enforced by the publish workflow guard); anything else is a
 	// commit build, whose default engine tag is pinned to the commit.
 	Version string
-	// Workspace whose git info stamps the CLI's VCS metadata and pins the
-	// default engine tag on commit builds. Auto-injected when cli-dev is
-	// called directly; a parent toolchain such as engine-dev passes its own.
-	// Only the commit and dirty state resolved from it reach the build, never
-	// the session-scoped Workspace, so the build's cache key isn't
-	// session-specific.
-	Ws *Workspace
-	// Resolved VCS commit to stamp, forwarded by a parent toolchain. Takes
-	// precedence over ws.
+	// The VCS commit to stamp into the binary, which also pins the default
+	// engine tag of a build whose version isn't semver. Without it the binary
+	// is unstamped. A stamped binary changes with every commit, so only a
+	// published CLI carries one; a CLI a check or test builds is the same
+	// bytes at every commit of the same source.
 	VcsCommit string
-	// Resolved VCS dirty state to stamp, paired with vcsCommit.
+	// Whether the stamped commit's tree had uncommitted changes, paired with
+	// vcsCommit.
 	VcsDirty bool
 }
 
@@ -305,10 +302,6 @@ func (r *Query) CliDev(opts ...CliDevOpts) *CliDev { // cli-dev (../../:0:0)
 		// `version` optional argument
 		if !querybuilder.IsZeroValue(opts[i].Version) {
 			q = q.Arg("version", opts[i].Version)
-		}
-		// `ws` optional argument
-		if !querybuilder.IsZeroValue(opts[i].Ws) {
-			q = q.Arg("ws", opts[i].Ws)
 		}
 		// `vcsCommit` optional argument
 		if !querybuilder.IsZeroValue(opts[i].VcsCommit) {
