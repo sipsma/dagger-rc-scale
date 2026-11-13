@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -609,13 +608,6 @@ func (dev *EngineDev) Service(
 ) (*dagger.Service, error) {
 	// Support 256 layers of nested dagger engines :-P
 	dev = dev.IncrementSubnet()
-	cacheVolumeName := "dagger-dev-engine-state"
-	if !sharedCache {
-		cacheVolumeName = "dagger-dev-engine-state-" + rand.Text()
-		if name != "" {
-			cacheVolumeName += "-" + name
-		}
-	}
 
 	devEngine, err := dev.Container(ctx, "", gpuSupport, "")
 	if err != nil {
@@ -623,12 +615,21 @@ func (dev *EngineDev) Service(
 	}
 
 	devEngine = devEngine.
-		WithExposedPort(1234, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}).
-		WithMountedCache(distconsts.EngineDefaultStateDir, core.NewCacheVolume(cacheVolumeName), dagger.ContainerWithMountedCacheOpts{
-			// Only one engine can safely use a state dir at a time. LOCKED keeps the
-			// cache identity stable while serializing concurrent users.
-			Sharing: dagger.CacheSharingModeLocked,
-		})
+		WithExposedPort(1234, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp})
+	if sharedCache {
+		devEngine = devEngine.
+			WithMountedCache(distconsts.EngineDefaultStateDir, core.NewCacheVolume("dagger-dev-engine-state"), dagger.ContainerWithMountedCacheOpts{
+				// Only one engine can safely use a state dir at a time. LOCKED keeps the
+				// cache identity stable while serializing concurrent users.
+				Sharing: dagger.CacheSharingModeLocked,
+			})
+	} else {
+		// Each start of the engine has state of its own.
+		devEngine, err = withDiskTemp(ctx, devEngine, distconsts.EngineDefaultStateDir)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	if metrics {
 		devEngine = devEngine.
