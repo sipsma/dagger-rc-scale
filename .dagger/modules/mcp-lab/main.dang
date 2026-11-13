@@ -116,7 +116,7 @@ type McpLab {
     let srcDir = source.directory("/")
 
     # build the dagger CLI from source
-    let cli = cliDev(ws: source, source: srcDir).binary
+    let cli = cliDev(source: srcDir).binary
 
     let bridgeBin = bridgeBinary(srcDir)
 

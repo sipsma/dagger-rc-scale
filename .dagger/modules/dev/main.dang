@@ -90,7 +90,7 @@ type Dev {
     # Parallel: the CLI build is independent of the engine, so the engine is
     # already coming up while the host CLI is still linking.
     let built = {{
-      cli: cliDev(runnerHost: runnerHost, ws: ws)
+      cli: cliDev(runnerHost: runnerHost)
         .devBinaries(platform: platform ?? defaultPlatform),
 
       started: engine
