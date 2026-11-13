@@ -788,8 +788,9 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 			Permissions: 0o755,
 		})
 
-	// The test engine starts on state of its own (withDiskTemp). Only the
-	// directory of its unix socket is shared, with the tests' container,
+	// The test engine starts on state of its own (withDiskTemp), and its
+	// /run is its own container's. Only the directory of its unix socket is
+	// shared, with the tests' container,
 	// which reaches the engine through it (nonNestedDevEngine in
 	// core/integration). Its volume is named by the source and the tests, so
 	// two different test runs on one engine don't meet in it, and a socket
@@ -818,7 +819,6 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 		WithExposedPort(1234, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}).
 		WithExposedPort(6060, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}),
 		distconsts.EngineDefaultStateDir).
-		WithMountedTemp("/run").
 		WithMountedCache("/run/dagger-test-sock", sockVol).
 		AsService(dagger.ContainerAsServiceOpts{
 			Args:                     engineArgs,
