@@ -5,6 +5,6 @@
     "dagger.gen.go": "a36a44f43f3869715aa69fc6c6f731c5ac038fa7bb3538dc19c1ad0d7bdafc25",
     "internal/dagger/dagger.gen.go": "0f642990c8737f90fa0c1652095cc8876d71d07b88baa147190211fc424bb84f",
     "internal/dagger/engine-dev.gen.go": "c36d289960cf55bb785308c104fd36351105b319255c1d0f04d45eaa9655ed3d",
-    "internal/dagger/entrypoint/main.dang": "c8ce82be81e8c8c474f625f2716ef472f10faccbf7f6730b87fe0c193d4750eb"
+    "internal/dagger/entrypoint/main.dang": "14bc7da46780b659ef703183a131e9e82dd380034867d7934cf454456a6efdb1"
   }
 }
