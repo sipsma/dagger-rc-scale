@@ -491,10 +491,7 @@ func (dev *EngineDev) Service(
 			})
 	} else {
 		// Each start of the engine has state of its own.
-		devEngine, err = withDiskTemp(ctx, devEngine, distconsts.EngineDefaultStateDir)
-		if err != nil {
-			return nil, err
-		}
+		devEngine = withDiskTemp(devEngine, distconsts.EngineDefaultStateDir)
 	}
 
 	if metrics {
