@@ -5,7 +5,7 @@ defmodule Dagger do
   ## Prerequisite
 
   The SDK depends on `docker` and `dagger` commands, please make sure those
-  commands are presents on your `PATH`.
+  commands are present on your `PATH`.
 
   ## Getting Started
 
