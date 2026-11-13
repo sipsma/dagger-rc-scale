@@ -403,15 +403,14 @@ func (dev *EngineDev) test(
 	// The test binaries are built by dagger/go's per-package build, as go
 	// test -c builds them, and run as go test runs them: each from its
 	// package's directory, several packages at once. Another module is built
-	// from its own directory, so its builds are keyed by its content alone,
-	// and unstamped: the stamped package is not in its binaries.
-	source, commit, dirty := opts.moduleSource, "", false
+	// from its own directory, so its builds are keyed by its content alone.
+	// Neither is stamped with the commit (see vcs).
+	source := opts.moduleSource
 	moduleDir := path.Join(testSourcePath, opts.module)
 	if opts.module == "" {
 		source, moduleDir = dev.Source, testSourcePath
-		commit, dirty = dev.vcs(ctx)
 	}
-	builder, err := build.NewBuilder(ctx, source, "", commit, dirty)
+	builder, err := build.NewBuilder(ctx, source, "", "", false)
 	if err != nil {
 		return nil, err
 	}
@@ -760,7 +759,7 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 		return nil, err
 	}
 
-	devBinary := clidev.New(clidev.CliDevOpts{Ws: dev.Ws}).Binary()
+	devBinary := clidev.New(clidev.CliDevOpts{}).Binary()
 	// This creates an engine.tar container file that can be used by the integration tests.
 	// In particular, it is used by core/integration/remotecache_test.go to create a
 	// dev engine that can be used to test remote caching.
