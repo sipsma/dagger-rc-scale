@@ -2,7 +2,7 @@ package main
 
 import (
 	"dagger/engine-dev/internal/dagger"
-	disktemp "dagger/engine-dev/internal/dagger/clients/disk-temp"
+	"dagger/engine-dev/internal/dagger/clients/disktemp"
 )
 
 // withDiskTemp is ctr with an empty directory at path on the engine's disk,
@@ -12,7 +12,7 @@ import (
 // the containers that use the engine.
 //
 // This module's API view has no disk argument, so the mount is the
-// disk-temp module's, on a view that has it. This goes when a release of
+// disktemp module's, on a view that has it. This goes when a release of
 // the SDK has disk.
 func withDiskTemp(ctr *dagger.Container, path string) *dagger.Container {
 	return disktemp.New().Mount(ctr, path)
