@@ -201,12 +201,14 @@ func (r *Release) Publish( //nolint:gocyclo
 		Name: "🚗 CLI",
 		Tag:  tag,
 	}
-	cliDevOpts := clidev.CliDevOpts{
-		// Dependencies don't inherit the workspace; forward it explicitly.
-		Ws: r.Workspace,
-	}
+	cliDevOpts := clidev.CliDevOpts{}
 	if version != "" {
 		cliDevOpts.Version = version
+	}
+	if !dryRun {
+		// A published CLI carries the commit it was built from, as the
+		// published engine does.
+		cliDevOpts.VcsCommit = commit
 	}
 	cliDev := clidev.New(cliDevOpts)
 	switch {
