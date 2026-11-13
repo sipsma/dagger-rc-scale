@@ -20,7 +20,11 @@ type Entrypoint implements ModuleEntrypoint {
   }
 
   pub runtimeImage(platform: Platform): Container! {
-    container(platform: platform ?? defaultPlatform).from("alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8")
+    container(platform: platform ?? defaultPlatform).from("alpine:3.22@sha256:49340b346798875b5592e5d420241f2f9cfba5f47e62ebb1446a1b34734e898f")
+  }
+
+  pub description: String! {
+    "Wolfi containers for dagger/dagger's own modules, each installing a named\nset of packages pinned to exact versions.\n\nThe Wolfi module resolves packages, with all their dependencies, against\nWolfi's index as it is when the call runs, and that index isn't part of any\ncache key. Wolfi publishes new builds most days, so two engines that build\nthe same container at different times would install different packages,\nand everything built on top of it would differ too. Installing a locked set\nmakes a container change only when wolfi.lock.json does."
   }
 
   pub types: [TypeDef!]! {
