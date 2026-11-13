@@ -212,7 +212,7 @@ type EngineLab {
     let base = container
       .from("alpine:3.20")
       .withExec(["apk", "add", "--no-cache", "curl", "jq", "git"])
-    let cli = cliDev(ws: source, source: srcDir).binary
+    let cli = cliDev(source: srcDir).binary
 
     self.client = dev
       .installClient(client: base, service: svc)
@@ -651,7 +651,7 @@ type EngineLab {
     let dir = workdir ?? source.directory("/")
     let run = ["env", "-u", "DAGGER_SESSION_PORT", "-u", "DAGGER_SESSION_TOKEN", "dagger"]
     let client = withCredentials(
-      dev.installClient(client: base, service: svc).withFile("/usr/local/bin/dagger", cliDev(ws: source, source: source.directory("/")).binary),
+      dev.installClient(client: base, service: svc).withFile("/usr/local/bin/dagger", cliDev(source: source.directory("/")).binary),
       cloudCredentials,
       daggerConfig,
     )
