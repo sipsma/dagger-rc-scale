@@ -296,13 +296,16 @@ targetVersion = "v1.0.0-beta.26"
 
 [sdks.go.scopes.".dagger/modules/engine-dev"]
 is-module = true
-clients = ["github.com/dagger/alpine@e746b9763b6f4d004954deb35f66e693edfd854a", "./.dagger/modules/cli-dev", "github.com/dagger/go@2f5cd3df43f4b8e884ce1c69f228c448b029148f", "github.com/dagger/wolfi@fdec349f9aad840f2853bc2e6534f2555788da04", "./.dagger/modules/engine-dev/notify"]
+clients = ["github.com/dagger/alpine@e746b9763b6f4d004954deb35f66e693edfd854a", "./.dagger/modules/cli-dev", "github.com/dagger/go@2f5cd3df43f4b8e884ce1c69f228c448b029148f", "github.com/dagger/wolfi@fdec349f9aad840f2853bc2e6534f2555788da04", "./.dagger/modules/engine-dev/notify", "./.dagger/modules/engine-dev/disktemp"]
 
 [sdks.go.scopes.".dagger/modules/engine-dev".settings]
 dangEntrypoint = true
 unifiedClients = true
 daggerGo = true
 targetVersion = "v1.0.0-beta.26"
+
+[sdks.dang.scopes.".dagger/modules/engine-dev/disktemp"]
+is-module = true
 
 [sdks.go.scopes.".dagger/modules/engine-dev/notify"]
 is-module = true
