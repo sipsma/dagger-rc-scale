@@ -818,7 +818,6 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 		WithExposedPort(1234, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}).
 		WithExposedPort(6060, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}),
 		distconsts.EngineDefaultStateDir).
-		WithMountedTemp("/run").
 		WithMountedCache("/run/dagger-test-sock", sockVol).
 		AsService(dagger.ContainerAsServiceOpts{
 			Args:                     engineArgs,
