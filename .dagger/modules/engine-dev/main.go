@@ -91,15 +91,22 @@ func vcsInfo(ctx context.Context, ws *dagger.Workspace) (commit string, dirty bo
 }
 
 // vcs is the workspace's git commit and whether its tree has uncommitted
-// changes, which stamped builds carry. It is read when a build stamps it, not
-// when engine-dev is made: reading it brings the workspace's git checkout
-// into the engine, which a call that stamps nothing doesn't need.
+// changes, which a published build carries, or nothing for any other build.
+// A stamped binary changes with every commit, and so does everything built
+// on it, so a build that only its source decides, such as a test's or a
+// check's, is the same bytes at every commit of the same source. It is read
+// when a build stamps it, not when engine-dev is made: reading it brings the
+// workspace's git checkout into the engine, which a call that stamps nothing
+// doesn't need.
 func (dev *EngineDev) vcs(ctx context.Context) (commit string, dirty bool) {
+	if !dev.stamp {
+		return "", false
+	}
 	return vcsInfo(ctx, dev.Ws)
 }
 
 // builder builds the engine's source for version, stamped with the
-// workspace's git commit.
+// workspace's git commit when the build is published.
 func (dev *EngineDev) builder(ctx context.Context, version string) (*build.Builder, error) {
 	commit, dirty := dev.vcs(ctx)
 	return build.NewBuilder(ctx, dev.Source, version, commit, dirty)
@@ -119,6 +126,10 @@ type EngineDev struct {
 	ClientDockerConfig *dagger.Secret
 
 	Ws *dagger.Workspace // +private
+
+	// stamp is whether builds carry the workspace's git commit: only a
+	// publish's do.
+	stamp bool
 }
 
 func (dev *EngineDev) NetworkCidr() string {
@@ -250,7 +261,9 @@ func (dev *EngineDev) engine(ctx context.Context, builder *build.Builder, platfo
 		WithFile(engineEntrypointPath, entrypoint).
 		WithEntrypoint([]string{filepath.Base(engineEntrypointPath)})
 
-	cli := clidev.New(clidev.CliDevOpts{Version: version, Ws: dev.Ws}).Binary(clidev.CLIDevBinaryOpts{
+	// The engine's CLI is stamped as the engine is.
+	commit, dirty := dev.vcs(ctx)
+	cli := clidev.New(clidev.CliDevOpts{Version: version, VcsCommit: commit, VcsDirty: dirty}).Binary(clidev.CLIDevBinaryOpts{
 		Platform: platform,
 	})
 	ctr = ctr.
@@ -551,7 +564,7 @@ func (dev *EngineDev) InstallClient(
 
 // The dagger CLI binary that InstallClient installs.
 func (dev *EngineDev) clientBinary() *dagger.File {
-	return clidev.New(clidev.CliDevOpts{Source: dev.cliDevSource(), Ws: dev.Ws}).Binary()
+	return clidev.New(clidev.CliDevOpts{Source: dev.cliDevSource()}).Binary()
 }
 
 // withoutOuterSession wraps a command whose Dagger client must reach the dev
@@ -708,7 +721,9 @@ func (dev *EngineDev) Publish(
 	// +optional
 	registryPassword *dagger.Secret,
 ) error {
-	// The released image ships its entries.
+	// The released image ships its entries, and its builds carry the
+	// commit they were built from. A dry run builds what a check builds.
+	dev.stamp = !dryRun
 	targetResults, err := dev.WithImageEntries().buildTargets(ctx, tag)
 	if err != nil {
 		return err
