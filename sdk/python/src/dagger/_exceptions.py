@@ -102,7 +102,7 @@ class QueryError(ClientError):
                 print(e.debug_query())
         """
         lines = graphql.print_ast(self.query).splitlines()
-        # count number of digits from line count
+        # count the number of digits in the line count
         pad = len(str(len(lines)))
         locations = (
             {loc.line: loc.column for loc in self.errors[0].locations}
