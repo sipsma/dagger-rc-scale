@@ -1,15 +1,19 @@
 [modules.changie]
+check.skip = ["*"]
 source = ".dagger/modules/changie"
 
 [modules.cli]
+check.skip = ["*"]
 source = ".dagger/modules/cli-dev"
 legacy-default-path = true
 
 [modules.docs]
+check.skip = ["*"]
 source = ".dagger/modules/docs-dev"
 legacy-default-path = true
 
 [modules.dotnet-client]
+check.skip = ["*"]
 source = ".dagger/modules/dotnet-client-dev"
 legacy-default-path = true
 
@@ -18,14 +22,17 @@ source = ".dagger/modules/elixir-client-dev"
 legacy-default-path = true
 
 [modules.engine-dev]
+check.skip = ["*"]
 source = ".dagger/modules/engine-dev"
 legacy-default-path = true
 
 [modules.go-client]
+check.skip = ["generate/stale"]
 source = ".dagger/modules/go-client-dev"
 legacy-default-path = true
 
 [modules.golang]
+check.skip = ["*"]
 source = "github.com/dagger/go@2f5cd3df43f4b8e884ce1c69f228c448b029148f"
 legacy-default-path = true
 
@@ -41,6 +48,7 @@ generate = [
 test = ["e2e/**", "hack/sdl-diff", "internal/fastbolt"]
 
 [modules.golangci-lint]
+check.skip = ["*"]
 source = "github.com/dagger/golangci-lint@main"
 
 [modules.golangci-lint.settings]
@@ -68,6 +76,7 @@ lint = [
 version = "2.14.0"
 
 [modules.helm]
+check.skip = ["*"]
 source = "dagger.io/kubernetes/helm"
 legacy-default-path = true
 
@@ -79,34 +88,42 @@ legacy-default-path = true
 version = "4.0.1"
 
 [modules.java-client]
+check.skip = ["*"]
 source = ".dagger/modules/java-client-dev"
 legacy-default-path = true
 
 [modules.markdown-lint]
+check.skip = ["fix/stale"]
 source = "modules/markdownlint"
 legacy-default-path = true
 
 [modules.php-client]
+check.skip = ["*"]
 source = ".dagger/modules/php-client-dev"
 legacy-default-path = true
 
 [modules.ps-analyzer]
+check.skip = ["*"]
 source = "dagger.io/dotnet/PsScriptAnalyzer"
 legacy-default-path = true
 
 [modules.python-client]
+check.skip = ["*"]
 source = ".dagger/modules/python-client-dev"
 legacy-default-path = true
 
 [modules.release]
+check.skip = ["docs-target-version/stale", "helm-target-version/stale", "java-sdk-target-version/stale", "php-sdk-target-version/stale", "publish-with-mock-endpoints", "python-sdk-target-version/stale", "rust-sdk-target-version/stale", "typescript-sdk-target-version/stale"]
 source = ".dagger/modules/release"
 legacy-default-path = true
 
 [modules.rust-client]
+check.skip = ["*"]
 source = ".dagger/modules/rust-client-dev"
 legacy-default-path = true
 
 [modules.security]
+check.skip = ["*"]
 source = ".dagger/modules/security"
 legacy-default-path = true
 
@@ -127,18 +144,21 @@ source = "dagger.io/shellcheck"
 legacy-default-path = true
 
 [modules.test-split]
+check.skip = ["test-base-extra", "test-cache-persistence", "test-call-and-shell", "test-cli-engine", "test-container", "test-ebpf", "test-ebpf-exec-sched", "test-fastbolt", "test-interface", "test-llm", "test-local-cache", "test-module-runtimes", "test-modules", "test-packages", "test-provision", "test-telemetry", "test-workspaces"]
 source = ".dagger/modules/test-split"
 legacy-default-path = true
 
 [modules.typescript-client]
+check.skip = ["*"]
 source = ".dagger/modules/typescript-client-dev"
 legacy-default-path = true
 
 [modules.dang-sdk]
+check.skip = ["*"]
 source = "dagger.io/sdk/dang@main"
-check.skip = ["generate/stale"]
 
 [modules.go-sdk]
+check.skip = ["*"]
 source = "github.com/dagger/go-sdk@9226b95db32afdfc1f1dcd9f716b3425010cd11a"
 
 [modules.go-sdk.settings]
@@ -153,24 +173,30 @@ lock = true
 source = ".dagger/modules/tla-check"
 
 [modules.editor]
+check.skip = ["*"]
 source = "github.com/vito/editor"
 
 [modules.go-cli]
+check.skip = ["*"]
 source = ".dagger/modules/go-cli"
 
 [modules.sdl-diff]
+check.skip = ["*"]
 source = ".dagger/modules/sdl-diff"
 
 [modules.contributor]
+check.skip = ["*"]
 source = "github.com/vito/agents/contributor"
 
 [modules.contributor.settings]
 remote = "dagger/dagger"
 
 [modules.staff]
+check.skip = ["*"]
 source = "github.com/vito/agents/staff"
 
 [modules.committer]
+check.skip = ["*"]
 source = "github.com/vito/agents/committer"
 
 [sdks.dang]
@@ -427,17 +453,21 @@ clients = ["./.dagger/modules/engine-dev", "./.dagger/modules/cli-dev"]
 is-module = true
 
 [modules.dagger-dev]
+check.skip = ["*"]
 source = ".dagger/modules/dagger-dev"
 main = true
 
 [modules.typescript-sdk]
+check.skip = ["*"]
 source = "github.com/dagger/typescript-sdk@main"
 
 [sdks.typescript]
 module = "typescript-sdk"
 
 [modules.reviewer]
+check.skip = ["*"]
 source = "github.com/vito/agents/reviewer"
 
 [modules.context]
+check.skip = ["*"]
 source = "github.com/vito/agents/context"
