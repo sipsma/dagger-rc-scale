@@ -321,9 +321,9 @@ func goBuildResults(do func(string, map[string]any, any) error, seeds, entrypoin
 	// and the tools: each result once.
 	var ids []string
 	seen := map[string]bool{}
-	exportSeeds := func(seeds []string, flags, shared []string) error {
+	exportSeeds := func(seeds []string, flags []string) error {
 		for _, seed := range seeds {
-			seedIDs, err := archiveBuilds(do, seed, goVersion, platform, flags, shared)
+			seedIDs, err := archiveBuilds(do, seed, goVersion, platform, flags)
 			if err != nil {
 				return fmt.Errorf("seed %s: %w", seed, err)
 			}
@@ -336,14 +336,11 @@ func goBuildResults(do func(string, map[string]any, any) error, seeds, entrypoin
 		}
 		return nil
 	}
-	// The Go SDK's builds share what generated code imports: each seed's
-	// archive builds name the dependency calls for what those imports
-	// reach, the same calls a module's runtime build makes.
-	if err := exportSeeds(seeds, distconsts.GoSDKBuildFlags(), distconsts.GoSDKSharedImports()); err != nil {
+	if err := exportSeeds(seeds, distconsts.GoSDKBuildFlags()); err != nil {
 		return nil, err
 	}
 	// go-sdk's entrypoints build with dagger/go's own flags: they set none.
-	if err := exportSeeds(entrypointSeeds, nil, nil); err != nil {
+	if err := exportSeeds(entrypointSeeds, nil); err != nil {
 		return nil, err
 	}
 	return append(append(append(ids, daggerGo...), gobuild...), golang.Container.From.ID), nil
@@ -370,10 +367,8 @@ func samePin(do func(string, map[string]any, any) error, builtin daggerGoSource,
 // archiveBuilds is what codegen's archives of the Go module in seed read
 // from the cache, as this session's IDs of them: archiveBuilds of its root
 // package, its dependencies alone, without tests, at goVersion with flags,
-// or with dagger/go's own when flags is nil, and with shared as its shared
-// imports: the dependency calls for what those reach, whole, as well as
-// each package's build.
-func archiveBuilds(do func(string, map[string]any, any) error, seed, goVersion, platform string, flags, shared []string) ([]string, error) {
+// or with dagger/go's own when flags is nil.
+func archiveBuilds(do func(string, map[string]any, any) error, seed, goVersion, platform string, flags []string) ([]string, error) {
 	var ws struct {
 		Host struct {
 			Directory struct {
@@ -398,8 +393,6 @@ func archiveBuilds(do func(string, map[string]any, any) error, seed, goVersion, 
 					ManifestSource withID   `json:"manifestSource"`
 					Tools          withID   `json:"tools"`
 					HelperBinary   withID   `json:"helperBinary"`
-					// The shared dependency calls' results, by ID.
-					SharedDependencies []string `json:"sharedDependencies"`
 				} `json:"archiveBuilds"`
 			} `json:"module"`
 		} `json:"go"`
@@ -409,10 +402,6 @@ func archiveBuilds(do func(string, map[string]any, any) error, seed, goVersion, 
 	if flags != nil {
 		flagsArg, flagsVar = ", buildFlags: $flags", ", $flags: [String!]!"
 		vars["flags"] = flags
-	}
-	if shared != nil {
-		flagsArg, flagsVar = flagsArg+", sharedImports: $shared", flagsVar+", $shared: [String!]!"
-		vars["shared"] = shared
 	}
 	platformArg, platformVar := "", ""
 	if platform != "" {
@@ -430,7 +419,6 @@ func archiveBuilds(do func(string, map[string]any, any) error, seed, goVersion, 
 					manifestSource { id }
 					tools { id }
 					helperBinary { id }
-					sharedDependencies
 				}
 			}
 		}
@@ -443,7 +431,7 @@ func archiveBuilds(do func(string, map[string]any, any) error, seed, goVersion, 
 	if len(got.Builds) == 0 {
 		return nil, errors.New("archive builds: none")
 	}
-	ids := append([]string(nil), got.SharedDependencies...)
+	var ids []string
 	for _, list := range [][]withID{got.Builds, got.Downloads, {got.Tool, got.ManifestTool, got.ManifestSource, got.Tools, got.HelperBinary}} {
 		for _, r := range list {
 			ids = append(ids, r.ID)

@@ -90,8 +90,9 @@ var GoSDKBasePackages = []string{"git", "openssh", "openssl"}
 // the packages they reach are compiled in dependency calls of their own, the
 // standard library's and the rest's, which are the same calls in every
 // module that keeps the SDK's versions of those packages' modules, whatever
-// else it imports. The engine image ships those calls whole. The third-party
-// ones are sdk/go/internal/codegendeps', which pins their versions.
+// else it imports, so a module's build finds them whole on an engine that
+// has built another. The third-party ones are sdk/go/internal/codegendeps',
+// which pins their versions.
 func GoSDKSharedImports() []string {
 	return []string{
 		"context", "encoding/json", "errors", "fmt", "log/slog", "net", "net/http", "os", "reflect", "runtime",

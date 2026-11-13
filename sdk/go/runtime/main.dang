@@ -27,8 +27,8 @@ type GoSdk {
 
   # What every module's generated code imports, which every runtime builds
   # with as dagger/go's shared imports, so that the dependency calls for the
-  # packages they reach are found whole in the image's entries
-  # (distconsts.GoSDKSharedImports).
+  # packages they reach are found whole on an engine that has built another
+  # module (distconsts.GoSDKSharedImports).
   let sharedImports: [String!]! = []
 
   # The dagger.io/dagger version generated code pins, which the image's
