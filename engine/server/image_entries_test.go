@@ -128,6 +128,7 @@ func TestPruneKeepsTheImagesEntries(t *testing.T) {
 	made := e.file(t, "made")
 	require.NoError(t, e.cache.Evaluate(e.ctx, made))
 	require.NoError(t, e.cache.ReleaseSession(e.ctx, "adapter"))
+	require.NoError(t, e.cache.WaitSessionRelease(e.ctx, "adapter"))
 
 	_, err := e.cache.Prune(e.ctx, []dagql.CachePrunePolicy{{All: true}})
 	require.NoError(t, err)
