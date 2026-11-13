@@ -812,16 +812,12 @@ func (dev *EngineDev) testContainer(ctx context.Context, ebpfProgs []string, wcp
 	}
 
 	registrySvc := registry()
-	devEngine, err = withDiskTemp(ctx, devEngine.
+	devEngineSvc := withDiskTemp(devEngine.
 		WithServiceBinding("registry", registrySvc).
 		WithServiceBinding("privateregistry", privateRegistry()).
 		WithExposedPort(1234, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}).
 		WithExposedPort(6060, dagger.ContainerWithExposedPortOpts{Protocol: dagger.NetworkProtocolTcp}),
-		distconsts.EngineDefaultStateDir)
-	if err != nil {
-		return nil, err
-	}
-	devEngineSvc := devEngine.
+		distconsts.EngineDefaultStateDir).
 		WithMountedTemp("/run").
 		WithMountedCache("/run/dagger-test-sock", sockVol).
 		AsService(dagger.ContainerAsServiceOpts{
