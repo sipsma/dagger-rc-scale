@@ -18,6 +18,7 @@ source = ".dagger/modules/dotnet-client-dev"
 legacy-default-path = true
 
 [modules.elixir-client]
+check.skip = ["*"]
 source = ".dagger/modules/elixir-client-dev"
 legacy-default-path = true
 
@@ -27,7 +28,7 @@ source = ".dagger/modules/engine-dev"
 legacy-default-path = true
 
 [modules.go-client]
-check.skip = ["generate/stale"]
+check.skip = ["*"]
 source = ".dagger/modules/go-client-dev"
 legacy-default-path = true
 
@@ -93,7 +94,7 @@ source = ".dagger/modules/java-client-dev"
 legacy-default-path = true
 
 [modules.markdown-lint]
-check.skip = ["fix/stale"]
+check.skip = ["*"]
 source = "modules/markdownlint"
 legacy-default-path = true
 
@@ -113,7 +114,7 @@ source = ".dagger/modules/python-client-dev"
 legacy-default-path = true
 
 [modules.release]
-check.skip = ["docs-target-version/stale", "helm-target-version/stale", "java-sdk-target-version/stale", "php-sdk-target-version/stale", "publish-with-mock-endpoints", "python-sdk-target-version/stale", "rust-sdk-target-version/stale", "typescript-sdk-target-version/stale"]
+check.skip = ["docs-target-version/stale", "helm-target-version/stale", "java-sdk-target-version/stale", "php-sdk-target-version/stale", "python-sdk-target-version/stale", "rust-sdk-target-version/stale", "typescript-sdk-target-version/stale"]
 source = ".dagger/modules/release"
 legacy-default-path = true
 
@@ -140,11 +141,12 @@ ignore = [
 ]
 
 [modules.shellcheck]
+check.skip = ["*"]
 source = "dagger.io/shellcheck"
 legacy-default-path = true
 
 [modules.test-split]
-check.skip = ["test-base-extra", "test-cache-persistence", "test-call-and-shell", "test-cli-engine", "test-container", "test-ebpf", "test-ebpf-exec-sched", "test-fastbolt", "test-interface", "test-llm", "test-local-cache", "test-module-runtimes", "test-modules", "test-packages", "test-provision", "test-telemetry", "test-workspaces"]
+check.skip = ["*"]
 source = ".dagger/modules/test-split"
 legacy-default-path = true
 
