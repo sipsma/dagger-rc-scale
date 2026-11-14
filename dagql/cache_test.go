@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -709,9 +710,17 @@ func TestInstallAncestorWalkOverAWideGraph(t *testing.T) {
 	// A second walk finds the same, so the first left no marks behind.
 	assert.Equal(t, len(c.installAncestorIDsLocked(root.id)), layers*width)
 
-	allocs := testing.AllocsPerRun(10, func() {
-		c.installAncestorIDsLocked(root.id)
-	})
+	// A walk whose marks the pool doesn't hand back makes them anew, about
+	// seven allocations more. That happens to a quarter of walks under the
+	// race detector, whose sync.Pool drops a quarter of what is put back, and
+	// to a walk after a GC empties the pool. So count one walk at a time and
+	// keep the least of several: the walk's own cost.
+	allocs := math.Inf(1)
+	for range 20 {
+		allocs = min(allocs, testing.AllocsPerRun(1, func() {
+			c.installAncestorIDsLocked(root.id)
+		}))
+	}
 	// Only the returned slice grows: a dozen allocations for 2,000 ancestors.
 	assert.Assert(t, allocs <= 16, "a walk over %d ancestors allocated %v times", layers*width, allocs)
 }
