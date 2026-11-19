@@ -81,7 +81,7 @@ func (r *EngineDev) Container(opts ...EngineDevContainerOpts) *Container { // en
 // Build the export driver the Go SDK's code generation loads packages
 // through: a GOPACKAGESDRIVER that serves the export data of what they import
 // from dagger/go's archives, so the go command compiles none of it.
-func (r *EngineDev) ExportDriver() *File { // engine-dev (../../main.go:756:1)
+func (r *EngineDev) ExportDriver() *File { // engine-dev (../../main.go:755:1)
 	q := r.query.Select("exportDriver")
 
 	return new(File).WithGraphQLQuery(q)
@@ -122,11 +122,11 @@ func (r *EngineDev) GoEnv(opts ...EngineDevGoEnvOpts) *Container { // engine-dev
 
 // EngineDevGraphqlSchemaOpts contains options for EngineDev.GraphqlSchema
 type EngineDevGraphqlSchemaOpts struct {
-	Version string // engine-dev (../../main.go:700:2)
+	Version string // engine-dev (../../main.go:699:2)
 }
 
 // Introspect the engine API schema, and return it as a graphql schema
-func (r *EngineDev) GraphqlSchema(opts ...EngineDevGraphqlSchemaOpts) *File { // engine-dev (../../main.go:697:1)
+func (r *EngineDev) GraphqlSchema(opts ...EngineDevGraphqlSchemaOpts) *File { // engine-dev (../../main.go:696:1)
 	q := r.query.Select("graphqlSchema")
 	for i := len(opts) - 1; i >= 0; i-- {
 		// `version` optional argument
@@ -245,14 +245,14 @@ func (r *EngineDev) InstallClient(opts ...EngineDevInstallClientOpts) *Container
 // This file is used by SDKs to generate clients. It is the engine's answer to
 // an introspection query from a client of its own version, computed
 // in-process by the introspect tool, so no engine is built or started.
-func (r *EngineDev) IntrospectionJSON() *File { // engine-dev (../../main.go:682:1)
+func (r *EngineDev) IntrospectionJSON() *File { // engine-dev (../../main.go:681:1)
 	q := r.query.Select("introspectionJson")
 
 	return new(File).WithGraphQLQuery(q)
 }
 
 // Build the `introspect` tool which introspects the engine API
-func (r *EngineDev) IntrospectionTool() *File { // engine-dev (../../main.go:745:1)
+func (r *EngineDev) IntrospectionTool() *File { // engine-dev (../../main.go:744:1)
 	q := r.query.Select("introspectionTool")
 
 	return new(File).WithGraphQLQuery(q)
@@ -316,17 +316,17 @@ type EngineDevPublishOpts struct {
 	//
 	//
 	// Default: "ghcr.io/dagger/engine"
-	Image string // engine-dev (../../main.go:809:2)
+	Image string // engine-dev (../../main.go:808:2)
 
-	DryRun bool // engine-dev (../../main.go:814:2)
+	DryRun bool // engine-dev (../../main.go:813:2)
 
-	RegistryUsername string // engine-dev (../../main.go:817:2)
+	RegistryUsername string // engine-dev (../../main.go:816:2)
 
-	RegistryPassword *Secret // engine-dev (../../main.go:819:2)
+	RegistryPassword *Secret // engine-dev (../../main.go:818:2)
 }
 
 // Publish all engine images to a registry
-func (r *EngineDev) Publish(ctx context.Context, tag []string, opts ...EngineDevPublishOpts) error { // engine-dev (../../main.go:804:1)
+func (r *EngineDev) Publish(ctx context.Context, tag []string, opts ...EngineDevPublishOpts) error { // engine-dev (../../main.go:803:1)
 	if r.publish != nil {
 		return nil
 	}
@@ -354,7 +354,7 @@ func (r *EngineDev) Publish(ctx context.Context, tag []string, opts ...EngineDev
 	return q.Execute(ctx)
 }
 
-func (r *EngineDev) ReleaseDryRun() *Check { // engine-dev (../../main.go:790:1)
+func (r *EngineDev) ReleaseDryRun() *Check { // engine-dev (../../main.go:789:1)
 	q := r.query.Select("releaseDryRun")
 
 	return new(Check).WithGraphQLQuery(q)
