@@ -312,13 +312,6 @@ func DaggerDispatch(ctx context.Context, parentJSON []byte, parentName string, f
 					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg version", err))
 				}
 			}
-			var ws *core.Workspace
-			if inputArgs["ws"] != nil {
-				err = json.Unmarshal([]byte(inputArgs["ws"]), &ws)
-				if err != nil {
-					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg ws", err))
-				}
-			}
 			var vcsCommit string
 			if inputArgs["vcsCommit"] != nil {
 				err = json.Unmarshal([]byte(inputArgs["vcsCommit"]), &vcsCommit)
@@ -333,7 +326,7 @@ func DaggerDispatch(ctx context.Context, parentJSON []byte, parentName string, f
 					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg vcsDirty", err))
 				}
 			}
-			return New(ctx, runnerHost, source, base, version, ws, vcsCommit, vcsDirty)
+			return New(ctx, runnerHost, source, base, version, vcsCommit, vcsDirty)
 		default:
 			return nil, fmt.Errorf("unknown function %s", fnName)
 		}

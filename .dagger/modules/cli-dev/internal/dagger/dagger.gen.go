@@ -27,7 +27,6 @@ type Platform = core.Platform
 type Secret = core.Secret
 type Void = core.Void
 type WithContainerFunc = core.WithContainerFunc
-type Workspace = core.Workspace
 
 // Client borrows a shared connection. Its API contains only the bound module.
 type Client struct{ *Query }
