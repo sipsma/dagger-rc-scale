@@ -207,11 +207,16 @@ func (build *Builder) goSDKFiles(ctx context.Context) (*dagger.Directory, error)
 	}
 	sdkCache := build.withRerun(core.NewContainer().From(consts.GolangImage)).
 		// pre-cache what module codegen downloads for a generated module (see
-		// goModuleSeed): the pinned SDK version, everything `go mod tidy`
-		// needs, and the version info `go get` reads
-		WithDirectory("/seed", seedMod).
+		// goModuleSeed): the pinned SDK version, what building it needs, and
+		// everything `go mod tidy` needs. The seed requires and imports that
+		// version, so tidy downloads it as codegen's `go get` does. `go get`
+		// would also cache the newest release of each module it adds or
+		// upgrades, which it reads to check for retractions and deprecations:
+		// they change whenever any of those modules publishes, so they would
+		// make these files different from one build to the next.
+		WithDirectory("/seed", seedMod.WithNewFile("dagger.go", "package main\n\nimport _ \"dagger.io/dagger\"\n")).
 		WithWorkdir("/seed").
-		WithExec([]string{"go", "get", "dagger.io/dagger@" + libVersion}).
+		WithExec([]string{"go", "mod", "edit", "-require=dagger.io/dagger@" + libVersion}).
 		WithExec([]string{"go", "mod", "tidy"}).
 		WithExec([]string{"go", "list", "-m", "all"})
 
@@ -222,7 +227,9 @@ func (build *Builder) goSDKFiles(ctx context.Context) (*dagger.Directory, error)
 	// Installed here, for the image's platform, so no engine installs them:
 	// the engine copies in what the install added.
 	toolchain := build.withRerun(core.NewContainer(dagger.ContainerOpts{Platform: build.platform}).From(distconsts.GoSDKGolangImage))
-	withGitAndSSH := toolchain.WithExec(append([]string{"apk", "add"}, distconsts.GoSDKBasePackages...))
+	// --no-cache leaves out Alpine's package index, which changes whenever
+	// any package on the branch does.
+	withGitAndSSH := toolchain.WithExec(append([]string{"apk", "add", "--no-cache"}, distconsts.GoSDKBasePackages...))
 
 	return core.NewDirectory().
 		// apk's log records when the install ran, so it would make these
