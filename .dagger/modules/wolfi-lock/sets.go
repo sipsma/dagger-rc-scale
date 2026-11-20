@@ -94,6 +94,13 @@ var sets = map[string]packageSet{
 	// sdl-diff's runner
 	"sdl-diff": {packages: []string{"git", "ca-certificates"}},
 
+	// release: Helm for the chart, the client that asks package registries
+	// whether a version is published, and the GitHub CLI's base (the gh
+	// module), all of which the publish-with-mock-endpoints check also runs
+	"release-helm":         {packages: []string{"helm-3~3.19.2"}},
+	"release-registry-get": {packages: []string{"curl", "ca-certificates"}},
+	"release-gh":           {packages: []string{"wolfi-base", "gh", "git"}},
+
 	// release's publish-with-mock-endpoints check: the client of the release
 	// engine, and the tools for the check's own steps
 	"publish-check-client":       {packages: []string{"apk-tools", "ca-certificates", "curl", "git"}},

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"dagger/gh/internal/dagger"
-	"dagger/gh/internal/dagger/clients/apko"
+	wolfilock "dagger/gh/internal/dagger/clients/wolfi-lock"
 )
 
 // GitHub CLI
@@ -224,13 +224,8 @@ func (m *Gh) host() string {
 
 func (m *Gh) base() *dagger.Container {
 	host := m.host()
-	ctr := apko.New().
-		Wolfi().
-		WithPackages([]string{
-			"gh",
-			"git",
-		}).
-		Container().
+	ctr := wolfilock.New().
+		Container("release-gh").
 		WithEnvVariable("GH_PROMPT_DISABLED", "true").
 		WithEnvVariable("GH_NO_UPDATE_NOTIFIER", "true").
 		WithEnvVariable("GH_HOST", host)

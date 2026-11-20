@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"dagger/release/internal/dagger"
-	"dagger/release/internal/dagger/clients/wolfi"
+	wolfilock "dagger/release/internal/dagger/clients/wolfi-lock"
 
 	"dagger.io/dagger/core"
 	"helm.sh/helm/v3/pkg/chart"
@@ -22,12 +22,8 @@ func (r *Release) helmChartSource() *dagger.Directory {
 }
 
 func (r *Release) helmChart() *dagger.Container {
-	return wolfi.New().
-		Container(wolfi.WolfiContainerOpts{
-			Packages: []string{
-				"helm-3~3.19.2",
-			},
-		}).
+	return wolfilock.New().
+		Container("release-helm").
 		WithDirectory("/dagger-helm", r.helmChartSource()).
 		WithWorkdir("/dagger-helm")
 }
