@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -406,10 +407,17 @@ const releaseEntriesPath = "/release-entries"
 // the Go builds of the release's dagger/go, which the builds of another
 // dagger/go mostly find through equivalent results. When that engine is no
 // release, or its image ships no entries, there are none, and why.
+//
+// Why is an input of the exec that makes the entries, so it never carries an
+// error's text: the engine adds the trace of the call that failed to it, and
+// that differs in every session, so the exec, the image and everything built
+// on it would run again in every session. The error goes to this function's
+// log instead.
 func releaseEntries(ctx context.Context, platform string) seedEntries {
 	version, err := core.Version(ctx)
 	if err != nil {
-		return seedEntries{none: fmt.Sprintf("the engine running this build has no version: %v", err)}
+		fmt.Fprintf(os.Stderr, "the engine running this build has no version: %v\n", err)
+		return seedEntries{none: "the engine running this build has no version"}
 	}
 	tag, _, _ := strings.Cut(version, "+")
 	if !releaseVersion(tag) {
@@ -421,7 +429,8 @@ func releaseEntries(ctx context.Context, platform string) seedEntries {
 		Directory(distconsts.EngineContainerImageEntriesDir).
 		Sync(ctx)
 	if err != nil {
-		return seedEntries{none: fmt.Sprintf("no entries from %s: %s", image, firstLine(err.Error()))}
+		fmt.Fprintf(os.Stderr, "no entries from %s: %v\n", image, err)
+		return seedEntries{none: "no entries from " + image}
 	}
 	return seedEntries{entries: entries}
 }
@@ -448,12 +457,6 @@ func releaseVersion(version string) bool {
 	}
 	_, err := strconv.Atoi(n)
 	return err == nil
-}
-
-// firstLine is s up to its first newline.
-func firstLine(s string) string {
-	line, _, _ := strings.Cut(s, "\n")
-	return line
 }
 
 // withSeedEngine is ctr, a container of an engine's build, after an exec
