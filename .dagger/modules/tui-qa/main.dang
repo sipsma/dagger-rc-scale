@@ -209,7 +209,7 @@ type TuiQa {
     # because engine-lab starts its service under the session DNS domain. LLM
     # auth then comes from the forwarded `daggerConfig` (withCredentials below)
     # rather than from nesting.
-    let lean = wolfi.container(packages: ["curl", "git"])
+    let lean = wolfiLock.container(set: "tui-qa-lean")
 
     let nesting = engineAddress == ""
 
@@ -288,7 +288,7 @@ type TuiQa {
       self
     } else {
       # a tiny client we curl the console from, on every interaction tool
-      let curlCtr = wolfi.container(packages: ["curl"])
+      let curlCtr = wolfiLock.container(set: "tui-qa-client")
         .withServiceBinding("tui-qa", svc)
 
       if (engineAddress != "") {

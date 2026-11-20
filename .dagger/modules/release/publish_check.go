@@ -13,7 +13,7 @@ import (
 
 	"dagger/release/internal/dagger"
 	enginedev "dagger/release/internal/dagger/clients/engine-dev"
-	"dagger/release/internal/dagger/clients/wolfi"
+	wolfilock "dagger/release/internal/dagger/clients/wolfi-lock"
 
 	"dagger.io/dagger/core"
 	"golang.org/x/mod/semver"
@@ -359,7 +359,7 @@ func newPublishCheckEnv(ctx context.Context, source *dagger.Directory, ws *dagge
 		platformArchive:    platformArchive,
 	}
 
-	gitSetup := publishCheckTools("git").
+	gitSetup := publishCheckTools("publish-check-git").
 		WithDirectory("/root/repo", source).
 		WithNewFile("/root/create-release-repo.sh", `#!/bin/sh
 set -e -u -x
@@ -535,10 +535,8 @@ func (env *publishCheckEnv) releaseEngine(ctx context.Context) (*dagger.Service,
 // to engine.
 func (env *publishCheckEnv) client(engine *dagger.Service) *dagger.Container {
 	cli := core.NewContainer().From(env.releaseEngineImage).File(publishCheckEngineCLIPath)
-	return wolfi.New().
-		Container(wolfi.WolfiContainerOpts{
-			Packages: []string{"apk-tools", "ca-certificates", "curl", "git"},
-		}).
+	return wolfilock.New().
+		Container("publish-check-client").
 		WithEnvVariable("HOME", "/root").
 		WithDirectory("/src", env.gitWorktree).
 		WithWorkdir("/src").
@@ -649,7 +647,7 @@ exit "$status"
 }
 
 func (env *publishCheckEnv) gitStdout(ctx context.Context, script string) (string, error) {
-	out, err := publishCheckTools("git").
+	out, err := publishCheckTools("publish-check-git").
 		With(gitUserConfig).
 		WithServiceBinding(env.gitHost, env.gitSvc).
 		WithWorkdir("/src").
@@ -668,7 +666,7 @@ func (env *publishCheckEnv) gitStdout(ctx context.Context, script string) (strin
 }
 
 func (env *publishCheckEnv) gitWorktreeStdout(ctx context.Context, script string) (string, error) {
-	out, err := publishCheckTools("git").
+	out, err := publishCheckTools("publish-check-git").
 		With(gitUserConfig).
 		WithServiceBinding(env.gitHost, env.gitSvc).
 		WithDirectory("/src", env.gitWorktree).
@@ -685,17 +683,17 @@ func (env *publishCheckEnv) gitWorktreeStdout(ctx context.Context, script string
 	return strings.TrimSpace(out), nil
 }
 
-// publishCheckTools is a Wolfi container with pkgs, for the check's own steps.
-// It is for the engine's platform, which is the check's platform too (see
-// publishCheckPlatform).
-func publishCheckTools(pkgs ...string) *dagger.Container {
-	return wolfi.New().Container(wolfi.WolfiContainerOpts{Packages: pkgs})
+// publishCheckTools is a Wolfi container with the named wolfi-lock package
+// set, for the check's own steps. It is for the engine's platform, which is
+// the check's platform too (see publishCheckPlatform).
+func publishCheckTools(set string) *dagger.Container {
+	return wolfilock.New().Container(set)
 }
 
-// awsCLI is a container with the AWS CLI, curl and pkgs, set up to talk to the
-// mock AWS service.
-func (env *publishCheckEnv) awsCLI(pkgs ...string) *dagger.Container {
-	return publishCheckTools(append([]string{"aws-cli-v2", "curl"}, pkgs...)...).
+// awsCLI is a container with the named wolfi-lock package set, which has the
+// AWS CLI and curl, set up to talk to the mock AWS service.
+func (env *publishCheckEnv) awsCLI(set string) *dagger.Container {
+	return publishCheckTools(set).
 		WithServiceBinding("moto", env.motoSvc).
 		WithEnvVariable("AWS_ACCESS_KEY_ID", "test").
 		WithEnvVariable("AWS_SECRET_ACCESS_KEY", "test").
@@ -705,7 +703,7 @@ func (env *publishCheckEnv) awsCLI(pkgs ...string) *dagger.Container {
 }
 
 func (env *publishCheckEnv) createAWSFixtures(ctx context.Context) (string, error) {
-	out, err := env.awsCLI().
+	out, err := env.awsCLI("publish-check-aws").
 		WithEnvVariable("AWS_BUCKET", env.awsBucket).
 		WithNewFile("/tmp/distribution.json", `{
   "CallerReference": "`+randomID()+`",
@@ -788,7 +786,7 @@ func (env *publishCheckEnv) assertNothingPublished(ctx context.Context, ref stri
 }
 
 func (env *publishCheckEnv) checkPublishWrites(ctx context.Context, ref string, since time.Time, expectNothing bool) error {
-	out, err := env.awsCLI("python3").
+	out, err := env.awsCLI("publish-check-aws-python3").
 		WithMountedCache("/records", env.mockRecords).
 		WithMountedCache("/registry", env.registryStorage).
 		WithEnvVariable("AWS_BUCKET", env.awsBucket).
@@ -941,7 +939,7 @@ func (env *publishCheckEnv) assertCLIPublishMetadata(ctx context.Context) error 
 	if semver.Prerelease(env.releaseTag) != "" {
 		isPrerelease = "1"
 	}
-	_, err := env.awsCLI("python3").
+	_, err := env.awsCLI("publish-check-aws-python3").
 		WithEnvVariable("AWS_BUCKET", env.awsBucket).
 		WithEnvVariable("AWS_CLOUDFRONT_DISTRIBUTION", env.awsCloudfrontDistribution).
 		WithEnvVariable("RELEASE_TAG", env.releaseTag).
@@ -1058,7 +1056,7 @@ func (env *publishCheckEnv) assertS3ArchiveSet(ctx context.Context, dir string, 
 		inspect = "1"
 	}
 
-	_, err := env.awsCLI("coreutils", "python3", "unzip").
+	_, err := env.awsCLI("publish-check-aws-unzip").
 		WithEnvVariable("AWS_BUCKET", env.awsBucket).
 		WithEnvVariable("S3_DIR", dir).
 		WithEnvVariable("INSPECT_ARCHIVES", inspect).
@@ -1270,7 +1268,7 @@ fi
 
 func (env *publishCheckEnv) assertCLIGitHubRelease(ctx context.Context) error {
 	assets := append(publishCheckArchiveNames(env.releaseTag), "checksums.txt")
-	_, err := env.awsCLI("python3").
+	_, err := env.awsCLI("publish-check-aws-python3").
 		WithMountedCache("/records", env.mockRecords).
 		WithEnvVariable("AWS_BUCKET", env.awsBucket).
 		WithEnvVariable("RELEASE_TAG", env.releaseTag).
@@ -1446,7 +1444,7 @@ if unexpected_components:
 }
 
 func (env *publishCheckEnv) assertCLIPackageManagers(ctx context.Context) error {
-	_, err := env.awsCLI("python3").
+	_, err := env.awsCLI("publish-check-aws-python3").
 		WithMountedCache("/records", env.mockRecords).
 		WithEnvVariable("AWS_BUCKET", env.awsBucket).
 		WithEnvVariable("RELEASE_TAG", env.releaseTag).
@@ -1822,7 +1820,7 @@ func (env *publishCheckEnv) assertRegistryTags(ctx context.Context) error {
 	if semver.Prerelease(env.releaseTag) != "" {
 		isPrerelease = "1"
 	}
-	tags, err := publishCheckTools("curl").
+	tags, err := publishCheckTools("publish-check-curl").
 		WithServiceBinding("registry", env.registrySvc).
 		WithEnvVariable("REGISTRY_USERNAME", publishCheckRegistryUser).
 		WithSecretVariable("REGISTRY_PASSWORD", core.SetSecret("registry-list-password-"+randomID(), publishCheckRegistryPass)).
@@ -1979,7 +1977,7 @@ func (env *publishCheckEnv) assertEngineVersion(ctx context.Context) error {
 }
 
 func (env *publishCheckEnv) assertCLIVersion(ctx context.Context) error {
-	version, err := env.awsCLI().
+	version, err := env.awsCLI("publish-check-aws").
 		WithEnvVariable("AWS_BUCKET", env.awsBucket).
 		WithExec([]string{"sh", "-ec", `
 aws --endpoint-url "$AWS_ENDPOINT_URL" s3 cp "s3://$AWS_BUCKET/dagger/releases/` + env.releaseVersion + `/dagger_` + env.releaseTag + `_` + env.platformArchive + `.tar.gz" /tmp/dagger.tgz
@@ -2070,7 +2068,7 @@ JS
 }
 
 func (env *publishCheckEnv) assertHelmTags(ctx context.Context) error {
-	tags, err := publishCheckTools("curl").
+	tags, err := publishCheckTools("publish-check-curl").
 		WithServiceBinding("registry", env.registrySvc).
 		WithEnvVariable("REGISTRY_USERNAME", publishCheckRegistryUser).
 		WithSecretVariable("REGISTRY_PASSWORD", core.SetSecret("registry-helm-list-password-"+randomID(), publishCheckRegistryPass)).
@@ -2083,7 +2081,7 @@ func (env *publishCheckEnv) assertHelmTags(ctx context.Context) error {
 		return err
 	}
 
-	_, err = publishCheckTools("curl", "python3").
+	_, err = publishCheckTools("publish-check-curl-python3").
 		WithServiceBinding("registry", env.registrySvc).
 		WithEnvVariable("REGISTRY_USERNAME", publishCheckRegistryUser).
 		WithSecretVariable("REGISTRY_PASSWORD", core.SetSecret("registry-helm-password-"+randomID(), publishCheckRegistryPass)).
@@ -2233,7 +2231,7 @@ type releaseCheckCerts struct {
 
 func newReleaseCheckCerts(caHostname string) *releaseCheckCerts {
 	const password = "hunter4"
-	ctr := publishCheckTools("openssl").
+	ctr := publishCheckTools("publish-check-openssl").
 		WithExec([]string{"openssl", "genrsa", "-aes256", "-out", "/ca.key", "-passout", "pass:" + password, "2048"}).
 		WithExec([]string{"openssl", "req", "-new", "-key", "/ca.key", "-out", "/ca.csr", "-passin", "pass:" + password, "-subj", "/C=US/ST=CA/L=San Francisco/O=Example/CN=" + caHostname}).
 		WithNewFile("/ca.ext", fmt.Sprintf(`basicConstraints=critical,CA:TRUE,pathlen:0

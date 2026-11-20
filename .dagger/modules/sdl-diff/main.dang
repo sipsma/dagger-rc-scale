@@ -64,7 +64,7 @@ type SdlDiff {
       .packages(ws: src)
       .get(key: ".")
       .binary(ws: src)
-    wolfi.container(packages: ["git", "ca-certificates"])
+    wolfiLock.container(set: "sdl-diff")
       .withFile("/usr/local/bin/sdl-diff", binary)
   }
 }

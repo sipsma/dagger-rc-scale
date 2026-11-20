@@ -209,7 +209,7 @@ type EngineLab {
     # belt-and-suspenders as tui-qa). The workspace is NOT mounted here — the
     # CLI and the engine binding are what's expensive and deliberate to pin,
     # while the tree is re-mounted per call (see `withSource`).
-    let base = wolfi.container(packages: ["curl", "jq", "git"])
+    let base = wolfiLock.container(set: "engine-lab-cli")
     let cli = cliDev(source: srcDir).binary
 
     self.client = dev
@@ -643,7 +643,7 @@ type EngineLab {
         insecureRootCapabilities: true,
       )
       .start
-    let base = wolfi.container(packages: ["curl"])
+    let base = wolfiLock.container(set: "engine-lab-client")
     let dir = workdir ?? source.directory("/")
     let run = ["env", "-u", "DAGGER_SESSION_PORT", "-u", "DAGGER_SESSION_TOKEN", "dagger"]
     let client = withCredentials(
@@ -1090,7 +1090,7 @@ type EngineLab {
   # A container with the helper, jq, and a dump at /tmp/wcprof.dump. Not
   # nonce-busted: a report is a pure function of the binary, dump and args.
   let wcprofRunner(source: Workspace!, dump: File!): Container! {
-    wolfi.container(packages: ["jq"])
+    wolfiLock.container(set: "engine-lab-wcprof")
       .withFile("/usr/local/bin/wcprof-report", wcprofReportBin(source))
       .withMountedFile("/tmp/wcprof.dump", dump)
   }
