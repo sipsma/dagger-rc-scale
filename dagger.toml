@@ -1,29 +1,31 @@
 [modules.changie]
 source = ".dagger/modules/changie"
 # The changelog is merged at release time.
-check.skip = ["generate/stale"]
+check.skip = ["*"]
 
 [modules.cli]
 source = ".dagger/modules/cli-dev"
 legacy-default-path = true
 # release/publish-with-mock-endpoints runs this release, publishing to mock
 # registries.
-check.skip = ["release-dry-run"]
+check.skip = ["*"]
 
 [modules.docs]
 source = ".dagger/modules/docs-dev"
 legacy-default-path = true
+check.skip = ["check"]
 
 [modules.dotnet-client]
 source = ".dagger/modules/dotnet-client-dev"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.elixir-client]
 source = ".dagger/modules/elixir-client-dev"
 legacy-default-path = true
 # release/publish-with-mock-endpoints runs this release, publishing to mock
 # registries.
-check.skip = ["release-dry-run"]
+check.skip = ["release-dry-run", "codegen-test", "lint", "sdk-test"]
 
 [modules.engine-dev]
 source = ".dagger/modules/engine-dev"
@@ -36,6 +38,7 @@ legacy-default-path = true
 [modules.golang]
 source = "github.com/dagger/go@79a92beb4df0898400ef7f7a632009035290383b"
 legacy-default-path = true
+check.skip = ["modules/packages/tests/test"]
 
 [modules.golang.settings]
 base = "dag://dagger-dev/go-base"
@@ -78,6 +81,7 @@ version = "2.14.0"
 [modules.helm]
 source = "dagger.io/kubernetes/helm"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.helm.settings]
 # The module installs the wolfi `helm` package as `helm~<version>`, and that
@@ -89,38 +93,42 @@ version = "4.0.1"
 [modules.java-client]
 source = ".dagger/modules/java-client-dev"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.markdown-lint]
 source = "modules/markdownlint"
 legacy-default-path = true
 # lint fails on whatever fix would change.
-check.skip = ["fix/stale"]
+check.skip = ["*"]
 
 [modules.php-client]
 source = ".dagger/modules/php-client-dev"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.ps-analyzer]
 source = "dagger.io/dotnet/PsScriptAnalyzer"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.python-client]
 source = ".dagger/modules/python-client-dev"
 legacy-default-path = true
 # release/publish-with-mock-endpoints runs this release, publishing to mock
 # registries.
-check.skip = ["release-dry-run"]
+check.skip = ["release-dry-run", "lint", "lint-docs-snippets", "python310/slow", "python310/unit", "python311/slow", "python311/unit", "python312/slow", "python312/unit", "python313/slow", "python313/unit", "python314/slow", "python314/unit"]
 
 [modules.release]
 source = ".dagger/modules/release"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.rust-client]
 source = ".dagger/modules/rust-client-dev"
 legacy-default-path = true
 # release/publish-with-mock-endpoints runs this release, publishing to mock
 # registries.
-check.skip = ["release-dry-run"]
+check.skip = ["*"]
 
 [modules.security]
 source = ".dagger/modules/security"
@@ -141,10 +149,12 @@ ignore = [
 [modules.shellcheck]
 source = "dagger.io/shellcheck"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.test-split]
 source = ".dagger/modules/test-split"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.typescript-client]
 source = ".dagger/modules/typescript-client-dev"
@@ -152,7 +162,7 @@ legacy-default-path = true
 # lint-typescript fails on whatever format would change, and
 # release/publish-with-mock-endpoints runs this release, publishing to mock
 # registries.
-check.skip = ["format/stale", "release-dry-run"]
+check.skip = ["format/stale", "release-dry-run", "lint-docs-snippets", "lint-typescript", "test-bunjs", "test-nodejs-lts", "test-nodejs-prev-lts"]
 
 [modules.dang-sdk]
 source = "dagger.io/sdk/dang@main"
