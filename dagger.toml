@@ -154,7 +154,6 @@ check.skip = ["*"]
 [modules.test-split]
 source = ".dagger/modules/test-split"
 legacy-default-path = true
-check.skip = ["*"]
 
 [modules.typescript-client]
 source = ".dagger/modules/typescript-client-dev"
