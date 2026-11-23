@@ -116,7 +116,7 @@ source = ".dagger/modules/python-client-dev"
 legacy-default-path = true
 # release/publish-with-mock-endpoints runs this release, publishing to mock
 # registries.
-check.skip = ["release-dry-run", "lint", "lint-docs-snippets", "python310/slow", "python310/unit", "python311/slow", "python311/unit", "python312/slow", "python312/unit", "python313/slow", "python313/unit", "python314/slow", "python314/unit"]
+check.skip = ["release-dry-run", "lint", "lint-docs-snippets"]
 
 [modules.release]
 source = ".dagger/modules/release"
@@ -154,7 +154,7 @@ check.skip = ["*"]
 [modules.test-split]
 source = ".dagger/modules/test-split"
 legacy-default-path = true
-check.skip = ["*"]
+check.skip = ["test-base", "test-base-extra", "test-packages", "test-provision", "test-telemetry", "test-call-and-shell", "test-cli-engine", "test-cache-persistence", "test-container", "test-llm", "test-modules", "test-workspaces", "test-ebpf"]
 
 [modules.typescript-client]
 source = ".dagger/modules/typescript-client-dev"
