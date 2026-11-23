@@ -461,13 +461,14 @@ func releaseVersion(version string) bool {
 
 // withSeedEngine is ctr, a container of an engine's build, after an exec
 // that starts that engine, runs cmd as its client once it listens, and stops
-// it. The engine's state is a mounted empty directory: a snapshot with no
-// parent, which the outer engine mounts as a plain directory on its disk, so
-// the engine inside can put its overlays on it, and which has no name, so the
-// exec is cached exactly when its inputs are the same. The engine starts
-// holding seed's entries as its own image's when ctr's engine-image-entries
-// finds their bundle of the version it merges, and otherwise, or with none,
-// starts without any and says why.
+// it. The engine's state is a temporary directory on the engine's disk
+// (withDiskTemp): empty for each run, removed once the exec ends, and no
+// output of the exec, since nothing reads it afterwards; the engine inside
+// puts its overlays on it, and it has no name, so the exec is cached exactly
+// when its inputs are the same. The engine starts holding seed's entries as
+// its own image's when ctr's engine-image-entries finds their bundle of the
+// version it merges, and otherwise, or with none, starts without any and says
+// why.
 func (dev *EngineDev) withSeedEngine(ctr *dagger.Container, seed seedEntries, cmd []string) *dagger.Container {
 	// Its network is the one after this engine-dev's, without changing
 	// dev's: an engine that took another increment could land on a network
@@ -479,13 +480,11 @@ func (dev *EngineDev) withSeedEngine(ctr *dagger.Container, seed seedEntries, cm
 	} else if seed.none != "" {
 		ctr = ctr.WithEnvVariable("SEED_ENTRIES_NONE", seed.none)
 	}
-	return ctr.
-		WithEnvVariable("_EXPERIMENTAL_DAGGER_CLI_BIN", cliPath).
-		WithMountedDirectory(distconsts.EngineDefaultStateDir, core.NewDirectory()).
-		WithExec(
-			withoutOuterSession(append([]string{"sh", "-c", seedEngineScript, "seed-engine", nested.NetworkCidr()}, cmd...)...),
-			dagger.ContainerWithExecOpts{InsecureRootCapabilities: true},
-		)
+	ctr = withDiskTemp(ctr.WithEnvVariable("_EXPERIMENTAL_DAGGER_CLI_BIN", cliPath), distconsts.EngineDefaultStateDir)
+	return ctr.WithExec(
+		withoutOuterSession(append([]string{"sh", "-c", seedEngineScript, "seed-engine", nested.NetworkCidr()}, cmd...)...),
+		dagger.ContainerWithExecOpts{InsecureRootCapabilities: true},
+	)
 }
 
 // seedEngineScript starts the container's engine on network $1, waits until
