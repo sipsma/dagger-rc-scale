@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -304,10 +303,10 @@ func (dev *EngineDev) goSDK(ctx context.Context) (*dagger.Directory, error) {
 // its own (withSeedEngine): whatever the engine running this build holds is
 // never exported, and a remote cache's offers, which carry keys the image's
 // engine refuses at start, never reach the image. With the Go builds, that
-// engine starts holding the entries of the release the engine running this
-// build is (releaseEntries), and builds whatever they don't hold; what it
-// takes from them through an equivalent result it exports under its own
-// recipe or with its contents. builder builds what runs here.
+// engine starts holding the entries releaseEntries gives, and builds whatever
+// they don't hold; what it takes from them through an equivalent result it
+// exports under its own recipe or with its contents. builder builds what runs
+// here.
 func (dev *EngineDev) imageEntries(ctx context.Context, builder *build.Builder, platform string, sdks []build.SDKFiles, goBuilds bool) (*dagger.Directory, map[string]string, error) {
 	engine, err := dev.engine(ctx, builder, "", "")
 	if err != nil {
@@ -319,7 +318,7 @@ func (dev *EngineDev) imageEntries(ctx context.Context, builder *build.Builder, 
 	}
 	var seed seedEntries
 	if goBuilds {
-		seed = releaseEntries(ctx, platform)
+		seed = releaseEntries()
 	}
 	const out = "/entries"
 	const sdkDigests = "/sdk-digests.json"
@@ -402,61 +401,13 @@ type seedEntries struct {
 // the release's entries it may start holding.
 const releaseEntriesPath = "/release-entries"
 
-// releaseEntries are the entries the image of the release the engine running
-// this build is ships for platform: what that engine started from. They hold
-// the Go builds of the release's dagger/go, which the builds of another
-// dagger/go mostly find through equivalent results. When that engine is no
-// release, or its image ships no entries, there are none, and why.
-//
-// Why is an input of the exec that makes the entries, so it never carries an
-// error's text: the engine adds the trace of the call that failed to it, and
-// that differs in every session, so the exec, the image and everything built
-// on it would run again in every session. The error goes to this function's
-// log instead.
-func releaseEntries(ctx context.Context, platform string) seedEntries {
-	version, err := core.Version(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "the engine running this build has no version: %v\n", err)
-		return seedEntries{none: "the engine running this build has no version"}
-	}
-	tag, _, _ := strings.Cut(version, "+")
-	if !releaseVersion(tag) {
-		return seedEntries{none: fmt.Sprintf("the engine running this build, %s, is no release", version)}
-	}
-	image := engineImageRepo + ":" + tag
-	entries, err := core.NewContainer(dagger.ContainerOpts{Platform: dagger.Platform(platform)}).
-		From(image).
-		Directory(distconsts.EngineContainerImageEntriesDir).
-		Sync(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "no entries from %s: %v\n", image, err)
-		return seedEntries{none: "no entries from " + image}
-	}
-	return seedEntries{entries: entries}
-}
-
-// engineImageRepo is where releases' engine images are.
-const engineImageRepo = "registry.dagger.io/engine"
-
-// releaseVersion reports whether version has the shape of a release's tag,
-// such as v0.19.1 or v1.0.0-beta.27, rather than of a build from source
-// between releases. A build whose version is a release's tag with build
-// metadata, as an engine built from that release's source reports, starts
-// from that release's entries too: they are only what its builds can find.
-func releaseVersion(version string) bool {
-	if !semver.IsValid(version) || semver.Build(version) != "" {
-		return false
-	}
-	pre := semver.Prerelease(version)
-	if pre == "" {
-		return true
-	}
-	kind, n, ok := strings.Cut(strings.TrimPrefix(pre, "-"), ".")
-	if !ok || (kind != "alpha" && kind != "beta" && kind != "rc") {
-		return false
-	}
-	_, err := strconv.Atoi(n)
-	return err == nil
+// releaseEntries are the entries an engine that makes an image's entries
+// starts holding besides its own builds. This workload starts every such
+// engine without any, without asking a registry for a release's image: its
+// runs then do the same work whatever the registry holds, as they did while no
+// image of the release the engine running them reports existed.
+func releaseEntries() seedEntries {
+	return seedEntries{none: "this workload starts without a release's entries"}
 }
 
 // withSeedEngine is ctr, a container of an engine's build, after an exec
