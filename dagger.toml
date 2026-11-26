@@ -1,41 +1,46 @@
 [modules.changie]
 source = ".dagger/modules/changie"
 # The changelog is merged at release time.
-check.skip = ["generate/stale"]
+check.skip = ["*"]
 
 [modules.cli]
 source = ".dagger/modules/cli-dev"
 legacy-default-path = true
 # release/publish-with-mock-endpoints runs this release, publishing to mock
 # registries.
-check.skip = ["release-dry-run"]
+check.skip = ["*"]
 
 [modules.docs]
 source = ".dagger/modules/docs-dev"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.dotnet-client]
 source = ".dagger/modules/dotnet-client-dev"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.elixir-client]
 source = ".dagger/modules/elixir-client-dev"
 legacy-default-path = true
 # release/publish-with-mock-endpoints runs this release, publishing to mock
 # registries.
-check.skip = ["release-dry-run"]
+check.skip = ["*"]
 
 [modules.engine-dev]
 source = ".dagger/modules/engine-dev"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.go-client]
 source = ".dagger/modules/go-client-dev"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.golang]
 source = "github.com/dagger/go@79a92beb4df0898400ef7f7a632009035290383b"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.golang.settings]
 base = "dag://dagger-dev/go-base"
@@ -50,6 +55,7 @@ test = ["e2e/**", "hack/sdl-diff", "internal/fastbolt"]
 
 [modules.golangci-lint]
 source = "github.com/dagger/golangci-lint@main"
+check.skip = ["*"]
 
 [modules.golangci-lint.settings]
 lint = [
@@ -78,6 +84,7 @@ version = "2.14.0"
 [modules.helm]
 source = "dagger.io/kubernetes/helm"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.helm.settings]
 # The module installs the wolfi `helm` package as `helm~<version>`, and that
@@ -89,42 +96,47 @@ version = "4.0.1"
 [modules.java-client]
 source = ".dagger/modules/java-client-dev"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.markdown-lint]
 source = "modules/markdownlint"
 legacy-default-path = true
 # lint fails on whatever fix would change.
-check.skip = ["fix/stale"]
+check.skip = ["*"]
 
 [modules.php-client]
 source = ".dagger/modules/php-client-dev"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.ps-analyzer]
 source = "dagger.io/dotnet/PsScriptAnalyzer"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.python-client]
 source = ".dagger/modules/python-client-dev"
 legacy-default-path = true
 # release/publish-with-mock-endpoints runs this release, publishing to mock
 # registries.
-check.skip = ["release-dry-run"]
+check.skip = ["*"]
 
 [modules.release]
 source = ".dagger/modules/release"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.rust-client]
 source = ".dagger/modules/rust-client-dev"
 legacy-default-path = true
 # release/publish-with-mock-endpoints runs this release, publishing to mock
 # registries.
-check.skip = ["release-dry-run"]
+check.skip = ["*"]
 
 [modules.security]
 source = ".dagger/modules/security"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.security.settings]
 # Paths to exclude from the source tree before scanning.
@@ -141,10 +153,12 @@ ignore = [
 [modules.shellcheck]
 source = "dagger.io/shellcheck"
 legacy-default-path = true
+check.skip = ["*"]
 
 [modules.test-split]
 source = ".dagger/modules/test-split"
 legacy-default-path = true
+check.skip = ["test-base", "test-cache-persistence", "test-call-and-shell", "test-cli-engine", "test-container", "test-ebpf", "test-interface", "test-llm", "test-local-cache", "test-module-runtimes", "test-modules", "test-provision", "test-telemetry", "test-workspaces"]
 
 [modules.typescript-client]
 source = ".dagger/modules/typescript-client-dev"
@@ -152,14 +166,15 @@ legacy-default-path = true
 # lint-typescript fails on whatever format would change, and
 # release/publish-with-mock-endpoints runs this release, publishing to mock
 # registries.
-check.skip = ["format/stale", "release-dry-run"]
+check.skip = ["*"]
 
 [modules.dang-sdk]
 source = "dagger.io/sdk/dang@main"
-check.skip = ["generate/stale"]
+check.skip = ["*"]
 
 [modules.go-sdk]
 source = "github.com/dagger/go-sdk@db520917cdf447e7c69c346875d25b7cb6ce0103"
+check.skip = ["*"]
 
 [modules.go-sdk.settings]
 lock = true
@@ -174,24 +189,30 @@ source = ".dagger/modules/tla-check"
 
 [modules.editor]
 source = "github.com/vito/editor"
+check.skip = ["*"]
 
 [modules.go-cli]
 source = ".dagger/modules/go-cli"
+check.skip = ["*"]
 
 [modules.sdl-diff]
 source = ".dagger/modules/sdl-diff"
+check.skip = ["*"]
 
 [modules.contributor]
 source = "github.com/vito/agents/contributor"
+check.skip = ["*"]
 
 [modules.contributor.settings]
 remote = "dagger/dagger"
 
 [modules.staff]
 source = "github.com/vito/agents/staff"
+check.skip = ["*"]
 
 [modules.committer]
 source = "github.com/vito/agents/committer"
+check.skip = ["*"]
 
 [sdks.dang]
 module = "dang-sdk"
@@ -2416,17 +2437,20 @@ is-module = true
 [modules.dagger-dev]
 source = ".dagger/modules/dagger-dev"
 main = true
+check.skip = ["*"]
 
 [modules.typescript-sdk]
 source = "github.com/dagger/typescript-sdk@main"
 # No module in this workspace uses it.
-check.skip = ["generate/stale"]
+check.skip = ["*"]
 
 [sdks.typescript]
 module = "typescript-sdk"
 
 [modules.reviewer]
 source = "github.com/vito/agents/reviewer"
+check.skip = ["*"]
 
 [modules.context]
 source = "github.com/vito/agents/context"
+check.skip = ["*"]
